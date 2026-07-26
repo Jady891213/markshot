@@ -13,18 +13,23 @@
 - The app is a resident macOS app with both a Dock entry and a menu-bar entry. Closing the management window hides it; only Quit ends the process. Keep the Dock entry visible even when a third-party menu-bar organizer hides the tray item.
 - Image generation is memory-first. Do not create image files unless the user explicitly chooses Export.
 - Preserve UTF-8 and UTF-16LE/BE decoding with and without BOM.
-- Preview pages must be downscaled from the same in-memory NativeImage objects used by copy/export, rather than independently scaling an iframe.
-- Keep copy and export as persistent right-aligned actions in the preview heading. For multi-page output, the heading page selector chooses the single page shown and acted upon.
+- The normal preview is selectable DOM rendered from the same complete HTML and theme CSS used by image capture. Create NativeImage objects only when the user chooses Copy, Export, or Quick Generate.
+- Keep copy and export as one split action in the operation bar: the main button copies and its menu exports. For multi-page output, the compact page selector chooses the single page acted upon.
 - Use the macOS tray title `MS` with the system monospaced font and an empty image. This is intentionally text-only so the status item follows macOS light/dark menu-bar contrast and cannot collapse into an unreadable template-image blob.
 - Clicking the menu-bar status icon opens its context menu; it must not open the management window directly.
 - Reopening MarkShot from its `.app` icon activates and shows the management window.
-- Keep the management UI as three full-height columns: plain-text input, final-image preview, and a single vertical configuration sidebar.
+- Keep the workspace unified around two sidebar modes: `即时` for editable pasted content and `阅读` for read-only local Markdown documents. Do not add horizontal document tabs.
+- Only the fixed immediate textarea is editable. Preview, Split, Source, and every local document view are read-only.
+- Preserve separate mode and per-document view state, scroll position, and active heading. Opening a local file switches to `阅读`; switching back restores the previous immediate or reading position.
+- The reading sidebar contains explicit Open Markdown, Opened, and Recent sections. Support multi-file selection, drag-and-drop, Command+O, second-instance file arguments, and macOS Open With.
+- Watch opened local files with Node `fs.watch` and debounce refreshes. If a file disappears, keep its last content and mark it unavailable.
+- Persist at most 20 deduplicated recent paths and timestamps. Do not persist document bodies, immediate content, rendered HTML, previews, or image history.
+- Keep the document body and right outline/style panel in one scroll container with the scrollbar at the far right. Style replaces Outline in the same position.
 - Use flat radio-card choices with compact icons for profile, theme, and background instead of selects.
 - The optional image title is gated by a local switch and is never persisted. The MarkShot footer switch is a persisted render setting used by both managed preview/export and quick generation.
 - Plain and soft backgrounds must be visibly distinct in the shared final render CSS; preview and exported/copied images must use that same render document.
-- Keep theme, optional image title, and image footer in one continuous sidebar group, in that order. Label the footer switch `图片页脚`.
-- Keep Paste, Generate Preview, and Clear together in the text-column heading; do not add a second action row below the editor.
-- Keep the text-heading actions ordered Clear, Paste, Preview, and label the primary action `预览`.
+- Keep theme, optional image title, and image footer in one continuous style group, in that order. Label the footer switch `图片页脚`.
+- Keep Clear and Paste at the left of the transparent immediate footer. Keep the secondary text action Save Document at its right; saving writes UTF-8 Markdown through a native dialog, opens it in Reading, and clears Immediate only after success.
 - Keep the top-left brand to a single `MarkShot` line without a status subtitle.
 - The background choices are None, Plain, and Soft. None removes canvas padding plus card background decoration so the output is only the themed Markdown content surface.
 - Show the current global shortcut in the app title bar immediately left of a settings icon. Configure it in an in-app modal opened by that icon; do not expose a separate Hide Window button.
@@ -34,6 +39,7 @@
 - A quick action must not overwrite the clipboard until a complete single-page image has been generated.
 - Content above 14,000 px is paginated. The quick action opens the manager for page selection and keeps the source clipboard intact.
 - Do not add remote CSS, fonts, analytics, uploads, or unrestricted navigation.
+- Do not add a localhost debug server, Vite, React, Vue, or a browser-only build unless a later requirement explicitly changes this boundary.
 
 ## Local workflow
 
@@ -58,6 +64,8 @@ After validation, replace the sibling `MarkShot.app` and remove the Forge `out/`
 
 - Test Chinese UTF-8, UTF-16LE, and UTF-16BE payloads, including BOM-less samples.
 - Test headings, nested lists, tasks, tables, blockquotes, footnotes, code highlighting, links, images, and unsafe HTML removal.
+- Test file selection, Command+O, multi-file drag-and-drop, Open With, repeated-path deduplication, recent ordering, file refresh, and missing-file recovery.
+- Verify Immediate and Reading restore their own active document, view, scroll position, and heading; Preview, Split, and Source must remain read-only.
 - Verify mobile 1080 px and desktop 1440 px; legacy or custom profile inputs must normalize to mobile.
 - Verify the global shortcut while another app has focus, successful clipboard image paste, multi-page fallback, shortcut conflict handling, and no disk output.
 - On every manual or automated Electron run, quit the app and verify that no Electron Helper process remains. If the user expects the resident process to be ready after handoff, relaunch the verified final `.app` intentionally and report that it was left running.
