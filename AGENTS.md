@@ -4,6 +4,7 @@
 
 - The canonical repository is `https://github.com/Jady891213/markshot.git`, with `main` as the default development branch.
 - Commit source, tests, documentation, and lightweight assets only. Never commit the compiled `.app`, Forge `out/`, DMG, ZIP, or generated preview images.
+- Keep standalone interface prototypes under `docs/prototype`, use numbered filenames to preserve their design evolution, and treat `03-unified-reading-share.html` as the current UI baseline until a newer prototype supersedes it.
 - Publish downloadable macOS builds as versioned GitHub Release assets. Every release includes both an App ZIP and a DMG named with the version and `macOS-arm64`.
 - The current public build target is macOS arm64. Do not imply Intel or Windows support until those builds are implemented and verified.
 

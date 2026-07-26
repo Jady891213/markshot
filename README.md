@@ -6,6 +6,10 @@ MarkShot 是一款常驻 macOS 的 Markdown 阅读与分享工具。
 
 当前版本：`v0.1.0`，仅提供 macOS Apple Silicon 构建。
 
+## 界面原型
+
+阅读与分享工作台的方案演进保存在 [`docs/prototype`](docs/prototype/README.md)。其中 `03-unified-reading-share.html` 是当前界面基线，其他编号文件用于追踪早期设计决策。
+
 ## 当前功能
 
 - Markdown、纯文本和富文本预览

@@ -1,0 +1,2463 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>MarkShot · Markdown 阅读模式原型</title>
+    <link
+      rel="icon"
+      href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='16' fill='%233d6dea'/%3E%3Ctext x='32' y='39' text-anchor='middle' font-family='monospace' font-size='21' font-weight='700' fill='white'%3EMS%3C/text%3E%3C/svg%3E"
+    />
+    <style>
+      :root {
+        color-scheme: light;
+        --ink: #17202e;
+        --muted: #6d7888;
+        --line: #dfe4eb;
+        --soft-line: #ebeff4;
+        --paper: #ffffff;
+        --canvas: #edf1f5;
+        --blue: #3d6dea;
+        --blue-soft: #edf2ff;
+        --green: #20a575;
+        --orange: #f08a4b;
+        font-family:
+          -apple-system, BlinkMacSystemFont, "SF Pro Text", "PingFang SC",
+          "Helvetica Neue", sans-serif;
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      html,
+      body {
+        min-width: 1080px;
+        min-height: 720px;
+        margin: 0;
+        background:
+          radial-gradient(circle at 10% 5%, rgba(86, 123, 235, 0.1), transparent 28%),
+          radial-gradient(circle at 92% 96%, rgba(57, 180, 143, 0.08), transparent 25%),
+          #e9edf2;
+        color: var(--ink);
+      }
+
+      button,
+      input {
+        font: inherit;
+      }
+
+      button {
+        cursor: pointer;
+      }
+
+      .prototype-shell {
+        display: grid;
+        grid-template-rows: auto minmax(0, 1fr);
+        width: 100vw;
+        height: 100vh;
+        padding: 18px;
+        gap: 14px;
+      }
+
+      .prototype-bar {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 20px;
+        min-height: 64px;
+        padding: 8px 10px 8px 18px;
+        background: rgba(255, 255, 255, 0.86);
+        border: 1px solid rgba(205, 213, 224, 0.9);
+        border-radius: 16px;
+        box-shadow: 0 12px 35px rgba(35, 47, 63, 0.08);
+        backdrop-filter: blur(20px);
+      }
+
+      .prototype-title {
+        min-width: 245px;
+      }
+
+      .prototype-title strong {
+        display: block;
+        font-size: 15px;
+        letter-spacing: -0.02em;
+      }
+
+      .prototype-title span {
+        display: block;
+        margin-top: 3px;
+        color: var(--muted);
+        font-size: 11px;
+      }
+
+      .concept-tabs {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 6px;
+        padding: 4px;
+        background: #eef2f6;
+        border: 1px solid #e1e6ed;
+        border-radius: 12px;
+      }
+
+      .concept-tab {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        min-height: 38px;
+        padding: 7px 13px;
+        color: #667284;
+        background: transparent;
+        border: 0;
+        border-radius: 9px;
+        font-size: 12px;
+        font-weight: 650;
+        white-space: nowrap;
+      }
+
+      .concept-tab .number {
+        display: grid;
+        place-items: center;
+        width: 20px;
+        height: 20px;
+        color: #7a8594;
+        background: rgba(255, 255, 255, 0.7);
+        border: 1px solid #d9dfe7;
+        border-radius: 6px;
+        font-size: 10px;
+      }
+
+      .concept-tab.active {
+        color: var(--ink);
+        background: white;
+        box-shadow: 0 2px 7px rgba(37, 48, 62, 0.1);
+      }
+
+      .concept-tab.active .number {
+        color: white;
+        background: var(--blue);
+        border-color: var(--blue);
+      }
+
+      .prototype-note {
+        min-width: 260px;
+        color: var(--muted);
+        font-size: 11px;
+        line-height: 1.45;
+        text-align: right;
+      }
+
+      .stage {
+        position: relative;
+        min-height: 0;
+        overflow: hidden;
+        background: #cfd6df;
+        border: 1px solid #c8d0db;
+        border-radius: 18px;
+        box-shadow: 0 28px 70px rgba(26, 35, 48, 0.16);
+      }
+
+      .concept {
+        position: absolute;
+        inset: 0;
+        display: none;
+      }
+
+      .concept.active {
+        display: block;
+        animation: concept-in 180ms ease-out;
+      }
+
+      @keyframes concept-in {
+        from {
+          opacity: 0;
+          transform: translateY(4px);
+        }
+        to {
+          opacity: 1;
+          transform: translateY(0);
+        }
+      }
+
+      .mac-window {
+        width: 100%;
+        height: 100%;
+        overflow: hidden;
+      }
+
+      .traffic {
+        display: flex;
+        gap: 7px;
+      }
+
+      .traffic i {
+        display: block;
+        width: 11px;
+        height: 11px;
+        border-radius: 50%;
+      }
+
+      .traffic i:nth-child(1) { background: #ff6157; }
+      .traffic i:nth-child(2) { background: #ffc12f; }
+      .traffic i:nth-child(3) { background: #2acb42; }
+
+      .icon {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        width: 18px;
+        height: 18px;
+        flex: 0 0 auto;
+      }
+
+      .icon svg {
+        width: 100%;
+        height: 100%;
+        fill: none;
+        stroke: currentColor;
+        stroke-width: 1.7;
+        stroke-linecap: round;
+        stroke-linejoin: round;
+      }
+
+      .tool-button {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        gap: 6px;
+        min-height: 32px;
+        padding: 5px 10px;
+        color: inherit;
+        background: transparent;
+        border: 1px solid transparent;
+        border-radius: 8px;
+        font-size: 12px;
+        font-weight: 590;
+      }
+
+      .tool-button:hover {
+        background: rgba(128, 140, 158, 0.1);
+        border-color: rgba(128, 140, 158, 0.15);
+      }
+
+      .primary-button {
+        color: white;
+        background: var(--blue);
+        border-color: var(--blue);
+      }
+
+      .primary-button:hover {
+        background: #315fd3;
+        border-color: #315fd3;
+      }
+
+      .dot-live {
+        display: inline-block;
+        width: 7px;
+        height: 7px;
+        background: #29aa77;
+        border-radius: 50%;
+        box-shadow: 0 0 0 3px rgba(41, 170, 119, 0.13);
+      }
+
+      .file-icon {
+        position: relative;
+        display: grid;
+        place-items: center;
+        width: 34px;
+        height: 38px;
+        flex: 0 0 auto;
+        color: #5573b9;
+        background: #edf2ff;
+        border: 1px solid #d6e0fa;
+        border-radius: 8px;
+        font: 700 9px/1 "SFMono-Regular", monospace;
+      }
+
+      .file-icon::after {
+        content: "";
+        position: absolute;
+        top: -1px;
+        right: -1px;
+        width: 9px;
+        height: 9px;
+        background: white;
+        border-left: 1px solid #d6e0fa;
+        border-bottom: 1px solid #d6e0fa;
+        border-radius: 0 7px 0 4px;
+      }
+
+      .markdown {
+        color: #252d39;
+        font-family:
+          ui-serif, "New York", "Songti SC", Georgia, serif;
+        font-size: 15px;
+        line-height: 1.82;
+      }
+
+      .markdown h1 {
+        margin: 0 0 10px;
+        font-size: 32px;
+        line-height: 1.22;
+        letter-spacing: -0.025em;
+      }
+
+      .markdown h2 {
+        margin: 30px 0 9px;
+        font-size: 21px;
+        line-height: 1.3;
+      }
+
+      .markdown h3 {
+        margin: 23px 0 7px;
+        font-size: 17px;
+      }
+
+      .markdown p {
+        margin: 0 0 14px;
+      }
+
+      .markdown ul {
+        margin: 6px 0 18px;
+        padding-left: 22px;
+      }
+
+      .markdown code {
+        padding: 2px 5px;
+        color: #a53b5d;
+        background: #f6edf1;
+        border-radius: 5px;
+        font: 0.88em/1.4 "SFMono-Regular", monospace;
+      }
+
+      .markdown pre {
+        margin: 17px 0;
+        padding: 18px;
+        overflow: hidden;
+        color: #d7e0ef;
+        background: #17202d;
+        border-radius: 12px;
+        font: 12px/1.65 "SFMono-Regular", monospace;
+      }
+
+      .markdown blockquote {
+        margin: 18px 0;
+        padding: 12px 16px;
+        color: #526076;
+        background: #f3f6fa;
+        border-left: 3px solid #6f8ee8;
+        border-radius: 0 8px 8px 0;
+      }
+
+      /* Concept 1: Library + Reader */
+      .reader-one {
+        display: grid;
+        grid-template-rows: 52px minmax(0, 1fr);
+        background: #f4f6f8;
+      }
+
+      .reader-one .titlebar {
+        display: grid;
+        grid-template-columns: 240px minmax(0, 1fr) auto;
+        align-items: center;
+        gap: 18px;
+        padding: 0 16px;
+        background: rgba(255, 255, 255, 0.94);
+        border-bottom: 1px solid #dfe4ea;
+      }
+
+      .reader-one .titlebar-left {
+        display: flex;
+        align-items: center;
+        gap: 18px;
+      }
+
+      .reader-one .doc-name {
+        min-width: 0;
+        text-align: center;
+      }
+
+      .reader-one .doc-name b {
+        display: block;
+        overflow: hidden;
+        font-size: 12px;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+      }
+
+      .reader-one .doc-name small {
+        color: #8993a1;
+        font-size: 9px;
+      }
+
+      .reader-one .title-actions {
+        display: flex;
+        gap: 4px;
+      }
+
+      .reader-one .body {
+        display: grid;
+        grid-template-columns: 255px minmax(0, 1fr) 218px;
+        min-height: 0;
+      }
+
+      .reader-one .recent-sidebar {
+        min-height: 0;
+        padding: 18px 12px;
+        overflow: hidden;
+        background: rgba(246, 248, 250, 0.95);
+        border-right: 1px solid #dfe4ea;
+      }
+
+      .sidebar-heading {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 0 8px 10px;
+      }
+
+      .sidebar-heading b {
+        font-size: 12px;
+      }
+
+      .sidebar-heading span {
+        color: #8993a1;
+        font-size: 10px;
+      }
+
+      .recent-list {
+        display: grid;
+        gap: 4px;
+      }
+
+      .recent-item {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        width: 100%;
+        padding: 9px;
+        color: inherit;
+        text-align: left;
+        background: transparent;
+        border: 0;
+        border-radius: 10px;
+      }
+
+      .recent-item.active {
+        background: white;
+        box-shadow: 0 3px 12px rgba(44, 56, 72, 0.08);
+      }
+
+      .recent-item:hover {
+        background: rgba(255, 255, 255, 0.72);
+      }
+
+      .recent-copy {
+        min-width: 0;
+      }
+
+      .recent-copy b,
+      .recent-copy small {
+        display: block;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+      }
+
+      .recent-copy b {
+        font-size: 11px;
+      }
+
+      .recent-copy small {
+        margin-top: 3px;
+        color: #8a95a4;
+        font-size: 9px;
+      }
+
+      .open-file-button {
+        width: calc(100% - 12px);
+        margin: 16px 6px 0;
+        color: #4f678f;
+        background: #edf2fa;
+        border: 1px dashed #cdd8e8;
+      }
+
+      .reader-one .reading-scroll {
+        min-width: 0;
+        min-height: 0;
+        overflow: auto;
+        background: #ffffff;
+      }
+
+      .reader-one .article {
+        max-width: 760px;
+        margin: 0 auto;
+        padding: 54px 64px 90px;
+      }
+
+      .eyebrow {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        margin-bottom: 13px;
+        color: #78869a;
+        font-family:
+          -apple-system, BlinkMacSystemFont, "PingFang SC", sans-serif;
+        font-size: 11px;
+      }
+
+      .reader-one .outline {
+        padding: 24px 18px;
+        background: #fafbfc;
+        border-left: 1px solid #e3e7ec;
+      }
+
+      .reader-one .outline b {
+        font-size: 11px;
+      }
+
+      .outline-list {
+        display: grid;
+        gap: 4px;
+        margin-top: 13px;
+        padding-left: 10px;
+        border-left: 1px solid #dce2ea;
+      }
+
+      .outline-list a {
+        padding: 5px 8px;
+        color: #788394;
+        border-radius: 6px;
+        font-size: 10px;
+        text-decoration: none;
+      }
+
+      .outline-list a.active {
+        color: #345ec2;
+        background: #edf2ff;
+        font-weight: 650;
+      }
+
+      .outline-list a.level-2 {
+        padding-left: 18px;
+      }
+
+      /* Concept 2: Home + Quick Look */
+      .reader-two {
+        display: grid;
+        grid-template-columns: 68px minmax(0, 1fr);
+        color: #e8edf4;
+        background: #151a20;
+      }
+
+      .reader-two .rail {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        padding: 16px 0;
+        background: #101419;
+        border-right: 1px solid #262e37;
+      }
+
+      .reader-two .rail .traffic {
+        transform: scale(0.78);
+        margin-bottom: 26px;
+      }
+
+      .mark-logo {
+        display: grid;
+        place-items: center;
+        width: 36px;
+        height: 36px;
+        color: white;
+        background: linear-gradient(145deg, #6280ff, #6d4ee7);
+        border-radius: 11px;
+        box-shadow: 0 8px 20px rgba(86, 100, 230, 0.32);
+        font: 750 13px/1 "SFMono-Regular", monospace;
+      }
+
+      .rail-tools {
+        display: grid;
+        gap: 10px;
+        margin-top: 24px;
+      }
+
+      .rail-icon {
+        display: grid;
+        place-items: center;
+        width: 36px;
+        height: 36px;
+        color: #7e8998;
+        background: transparent;
+        border: 0;
+        border-radius: 10px;
+      }
+
+      .rail-icon.active {
+        color: white;
+        background: #252d38;
+      }
+
+      .rail-bottom {
+        margin-top: auto;
+      }
+
+      .reader-two .home {
+        min-width: 0;
+        min-height: 0;
+        padding: 28px 34px 36px;
+        overflow: auto;
+        background:
+          radial-gradient(circle at 88% 12%, rgba(101, 89, 230, 0.15), transparent 30%),
+          #181e25;
+      }
+
+      .home-header {
+        display: flex;
+        align-items: flex-start;
+        justify-content: space-between;
+      }
+
+      .home-header h1 {
+        margin: 0;
+        font-size: 25px;
+        letter-spacing: -0.035em;
+      }
+
+      .home-header p {
+        margin: 7px 0 0;
+        color: #8e9aaa;
+        font-size: 11px;
+      }
+
+      .home-actions {
+        display: flex;
+        gap: 8px;
+      }
+
+      .reader-two .home-actions .tool-button {
+        color: #dbe3ee;
+        background: #242c36;
+        border-color: #303a46;
+      }
+
+      .reader-two .home-actions .primary-button {
+        color: white;
+        background: #6c68ef;
+        border-color: #6c68ef;
+      }
+
+      .section-line {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        margin: 30px 0 12px;
+      }
+
+      .section-line b {
+        font-size: 12px;
+      }
+
+      .section-line span {
+        color: #788494;
+        font-size: 10px;
+      }
+
+      .recent-cards {
+        display: grid;
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+        gap: 12px;
+      }
+
+      .recent-card {
+        position: relative;
+        min-width: 0;
+        height: 136px;
+        padding: 15px;
+        overflow: hidden;
+        color: #dce5ef;
+        text-align: left;
+        background: #222a34;
+        border: 1px solid #303946;
+        border-radius: 14px;
+      }
+
+      .recent-card:hover {
+        border-color: #5965a6;
+        transform: translateY(-1px);
+      }
+
+      .recent-card .tag {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        color: #99a6b7;
+        font-size: 9px;
+      }
+
+      .recent-card h3 {
+        margin: 14px 0 7px;
+        overflow: hidden;
+        font-size: 13px;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+      }
+
+      .recent-card p {
+        display: -webkit-box;
+        margin: 0;
+        overflow: hidden;
+        color: #8f9cad;
+        font-size: 10px;
+        line-height: 1.55;
+        -webkit-box-orient: vertical;
+        -webkit-line-clamp: 2;
+      }
+
+      .recent-card time {
+        position: absolute;
+        right: 13px;
+        bottom: 11px;
+        color: #657181;
+        font-size: 8px;
+      }
+
+      .quick-preview {
+        display: grid;
+        grid-template-columns: minmax(0, 1.45fr) minmax(240px, 0.55fr);
+        min-height: 360px;
+        overflow: hidden;
+        background: #212832;
+        border: 1px solid #303946;
+        border-radius: 16px;
+      }
+
+      .quick-paper {
+        min-height: 0;
+        padding: 34px 44px;
+        overflow: hidden;
+        color: #202936;
+        background: #f8f7f4;
+      }
+
+      .quick-paper .markdown {
+        font-size: 13px;
+        line-height: 1.72;
+      }
+
+      .quick-paper .markdown h1 {
+        font-size: 25px;
+      }
+
+      .quick-paper .markdown h2 {
+        margin-top: 22px;
+        font-size: 18px;
+      }
+
+      .file-info {
+        padding: 24px 22px;
+        background: #202730;
+        border-left: 1px solid #303946;
+      }
+
+      .file-info h3 {
+        margin: 0;
+        font-size: 13px;
+      }
+
+      .file-info dl {
+        display: grid;
+        grid-template-columns: 54px 1fr;
+        gap: 12px 8px;
+        margin: 22px 0 0;
+        font-size: 10px;
+      }
+
+      .file-info dt {
+        color: #718091;
+      }
+
+      .file-info dd {
+        margin: 0;
+        overflow: hidden;
+        color: #b6c1ce;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+      }
+
+      .watch-banner {
+        display: flex;
+        align-items: center;
+        gap: 9px;
+        margin-top: 24px;
+        padding: 10px;
+        color: #8fdabf;
+        background: rgba(31, 163, 116, 0.1);
+        border: 1px solid rgba(57, 185, 139, 0.18);
+        border-radius: 9px;
+        font-size: 9px;
+      }
+
+      /* Concept 3: Split studio */
+      .reader-three {
+        display: grid;
+        grid-template-rows: 48px 42px minmax(0, 1fr) 26px;
+        color: #202734;
+        background: #e9edf2;
+      }
+
+      .reader-three .titlebar {
+        display: grid;
+        grid-template-columns: 190px minmax(0, 1fr) 190px;
+        align-items: center;
+        padding: 0 14px;
+        background: #f9fafb;
+        border-bottom: 1px solid #d9dee6;
+      }
+
+      .reader-three .titlebar .traffic {
+        justify-self: start;
+      }
+
+      .reader-three .app-name {
+        justify-self: center;
+        font-size: 12px;
+        font-weight: 680;
+      }
+
+      .reader-three .title-tools {
+        display: flex;
+        justify-content: flex-end;
+        gap: 3px;
+      }
+
+      .file-tabs {
+        display: flex;
+        align-items: end;
+        gap: 2px;
+        padding: 4px 8px 0;
+        background: #eef1f5;
+        border-bottom: 1px solid #d6dce4;
+      }
+
+      .file-tab {
+        display: flex;
+        align-items: center;
+        gap: 7px;
+        height: 37px;
+        padding: 0 12px;
+        color: #6d7887;
+        background: transparent;
+        border: 1px solid transparent;
+        border-bottom: 0;
+        border-radius: 8px 8px 0 0;
+        font-size: 10px;
+      }
+
+      .file-tab.active {
+        color: #25304c;
+        background: white;
+        border-color: #d7dce4;
+      }
+
+      .file-tab .tiny-dot {
+        width: 5px;
+        height: 5px;
+        background: #e2a354;
+        border-radius: 50%;
+      }
+
+      .studio-body {
+        display: grid;
+        grid-template-columns: minmax(330px, 0.8fr) 6px minmax(480px, 1.2fr);
+        min-height: 0;
+      }
+
+      .source-pane {
+        min-width: 0;
+        min-height: 0;
+        overflow: hidden;
+        background: #1c222b;
+      }
+
+      .pane-heading {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        height: 40px;
+        padding: 0 12px;
+        border-bottom: 1px solid rgba(128, 144, 162, 0.15);
+      }
+
+      .source-pane .pane-heading {
+        color: #aeb8c5;
+      }
+
+      .pane-heading b {
+        font-size: 10px;
+        text-transform: uppercase;
+        letter-spacing: 0.08em;
+      }
+
+      .editor-code {
+        display: grid;
+        grid-template-columns: 42px minmax(0, 1fr);
+        height: calc(100% - 40px);
+        padding: 16px 0 30px;
+        overflow: hidden;
+        color: #c9d3df;
+        font: 11px/1.78 "SFMono-Regular", Consolas, monospace;
+      }
+
+      .line-numbers {
+        padding-right: 11px;
+        color: #525d69;
+        text-align: right;
+        user-select: none;
+      }
+
+      .code-lines {
+        overflow: hidden;
+        white-space: pre-wrap;
+      }
+
+      .code-lines .syntax-title { color: #76a8f8; }
+      .code-lines .syntax-mark { color: #627083; }
+      .code-lines .syntax-strong { color: #e6b870; }
+      .code-lines .syntax-code { color: #86c7a6; }
+
+      .split-handle {
+        position: relative;
+        background: #d7dde5;
+        cursor: col-resize;
+      }
+
+      .split-handle::after {
+        content: "";
+        position: absolute;
+        top: 50%;
+        left: 2px;
+        width: 2px;
+        height: 28px;
+        background: #9ca7b5;
+        border-radius: 2px;
+        transform: translateY(-50%);
+      }
+
+      .preview-pane {
+        min-width: 0;
+        min-height: 0;
+        background: #f7f8fa;
+      }
+
+      .preview-pane .pane-heading {
+        background: white;
+        border-bottom-color: #e1e5ea;
+      }
+
+      .pane-heading-tools {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+      }
+
+      .view-segment {
+        display: flex;
+        padding: 2px;
+        background: #eff2f5;
+        border-radius: 7px;
+      }
+
+      .view-segment button {
+        padding: 3px 7px;
+        color: #7b8594;
+        background: transparent;
+        border: 0;
+        border-radius: 5px;
+        font-size: 9px;
+      }
+
+      .view-segment button.active {
+        color: #293347;
+        background: white;
+        box-shadow: 0 1px 3px rgba(35, 47, 62, 0.12);
+      }
+
+      .studio-preview-scroll {
+        height: calc(100% - 40px);
+        overflow: auto;
+      }
+
+      .studio-preview-paper {
+        max-width: 760px;
+        min-height: 100%;
+        margin: 0 auto;
+        padding: 44px 58px 90px;
+        background: white;
+        box-shadow: 0 0 0 1px #e8ebef;
+      }
+
+      .reader-three .statusbar {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 0 10px;
+        color: #778294;
+        background: #f2f4f7;
+        border-top: 1px solid #d9dee6;
+        font-size: 8px;
+      }
+
+      .status-items {
+        display: flex;
+        align-items: center;
+        gap: 13px;
+      }
+
+      /* Concept 4: Zen reader */
+      .reader-four {
+        position: relative;
+        overflow: hidden;
+        color: #403b35;
+        background:
+          radial-gradient(circle at 15% 20%, rgba(202, 173, 126, 0.11), transparent 26%),
+          #f2eee7;
+      }
+
+      .zen-titlebar {
+        position: absolute;
+        z-index: 3;
+        top: 0;
+        right: 0;
+        left: 0;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        height: 52px;
+        padding: 0 16px;
+        background: rgba(246, 242, 235, 0.88);
+        border-bottom: 1px solid rgba(150, 133, 110, 0.16);
+        backdrop-filter: blur(18px);
+      }
+
+      .zen-title-left,
+      .zen-title-right {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+      }
+
+      .zen-title-left b {
+        font-size: 11px;
+      }
+
+      .zen-title-left small {
+        color: #8e8375;
+        font-size: 9px;
+      }
+
+      .zen-menu-button {
+        display: grid;
+        place-items: center;
+        width: 31px;
+        height: 31px;
+        color: #706659;
+        background: rgba(255, 255, 255, 0.55);
+        border: 1px solid rgba(136, 119, 96, 0.18);
+        border-radius: 9px;
+      }
+
+      .zen-scroll {
+        position: absolute;
+        inset: 52px 0 0;
+        overflow: auto;
+      }
+
+      .zen-paper {
+        width: min(760px, calc(100% - 240px));
+        min-height: calc(100% - 70px);
+        margin: 34px auto 80px;
+        padding: 62px 78px 100px;
+        background: #fffdf8;
+        border: 1px solid rgba(147, 129, 103, 0.16);
+        border-radius: 4px;
+        box-shadow:
+          0 1px 1px rgba(70, 55, 38, 0.04),
+          0 22px 55px rgba(74, 59, 40, 0.1);
+      }
+
+      .zen-paper .markdown {
+        color: #403a32;
+        font-size: 16px;
+        line-height: 1.9;
+      }
+
+      .zen-paper .markdown h1 {
+        font-size: 35px;
+        font-weight: 650;
+      }
+
+      .zen-meta {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        margin-bottom: 34px;
+        color: #978b7b;
+        font: 10px/1.4 -apple-system, BlinkMacSystemFont, sans-serif;
+      }
+
+      .zen-floating {
+        position: absolute;
+        z-index: 4;
+        bottom: 22px;
+        left: 50%;
+        display: flex;
+        align-items: center;
+        gap: 4px;
+        padding: 6px;
+        color: #5d554b;
+        background: rgba(255, 253, 248, 0.9);
+        border: 1px solid rgba(125, 108, 87, 0.2);
+        border-radius: 14px;
+        box-shadow: 0 12px 30px rgba(76, 59, 38, 0.15);
+        backdrop-filter: blur(18px);
+        transform: translateX(-50%);
+      }
+
+      .zen-floating .tool-button {
+        min-height: 35px;
+      }
+
+      .zen-floating .primary-button {
+        background: #55483b;
+        border-color: #55483b;
+      }
+
+      .zen-recents {
+        position: absolute;
+        z-index: 5;
+        top: 66px;
+        left: 18px;
+        width: 250px;
+        padding: 12px;
+        color: #484139;
+        background: rgba(255, 253, 248, 0.94);
+        border: 1px solid rgba(139, 121, 97, 0.2);
+        border-radius: 14px;
+        box-shadow: 0 18px 45px rgba(77, 61, 42, 0.13);
+        backdrop-filter: blur(20px);
+      }
+
+      .zen-recents[hidden] {
+        display: none;
+      }
+
+      .zen-recents h3 {
+        margin: 2px 5px 9px;
+        font-size: 11px;
+      }
+
+      .zen-recents .recent-item {
+        border-radius: 8px;
+      }
+
+      .zen-recents .recent-item.active {
+        background: #f2ede4;
+        box-shadow: none;
+      }
+
+      .zen-recents .file-icon {
+        width: 29px;
+        height: 33px;
+        color: #8a7154;
+        background: #f6efe5;
+        border-color: #eadfce;
+      }
+
+      /* Shared image workspace */
+      .share-mode {
+        --share-bg: #eef2f6;
+        --share-panel: #ffffff;
+        --share-soft: #f6f8fb;
+        --share-text: #1e2838;
+        --share-muted: #748093;
+        --share-line: #dce2ea;
+        --share-primary: #3d6dea;
+        position: absolute;
+        z-index: 12;
+        inset: 0;
+        display: none;
+        grid-template-rows: 54px minmax(0, 1fr);
+        color: var(--share-text);
+        background: var(--share-bg);
+      }
+
+      .concept.sharing .share-mode {
+        display: grid;
+        animation: share-in 180ms ease-out;
+      }
+
+      @keyframes share-in {
+        from {
+          opacity: 0;
+          transform: translateY(5px);
+        }
+        to {
+          opacity: 1;
+          transform: translateY(0);
+        }
+      }
+
+      .share-topbar {
+        display: grid;
+        grid-template-columns: 240px minmax(0, 1fr) 240px;
+        align-items: center;
+        padding: 0 16px;
+        background: color-mix(in srgb, var(--share-panel) 94%, transparent);
+        border-bottom: 1px solid var(--share-line);
+        backdrop-filter: blur(18px);
+      }
+
+      .share-back {
+        justify-self: start;
+        color: var(--share-muted);
+      }
+
+      .share-title {
+        text-align: center;
+      }
+
+      .share-title b,
+      .share-title small {
+        display: block;
+      }
+
+      .share-title b {
+        font-size: 12px;
+      }
+
+      .share-title small {
+        margin-top: 2px;
+        color: var(--share-muted);
+        font-size: 9px;
+      }
+
+      .share-shortcut {
+        justify-self: end;
+        padding: 5px 9px;
+        color: var(--share-muted);
+        background: var(--share-soft);
+        border: 1px solid var(--share-line);
+        border-radius: 7px;
+        font: 9px/1.2 "SFMono-Regular", monospace;
+      }
+
+      .share-workspace {
+        display: grid;
+        grid-template-columns: minmax(270px, 0.72fr) minmax(430px, 1.28fr) 276px;
+        min-width: 0;
+        min-height: 0;
+      }
+
+      .share-source,
+      .share-preview,
+      .share-settings {
+        min-width: 0;
+        min-height: 0;
+      }
+
+      .share-source {
+        display: grid;
+        grid-template-rows: auto minmax(0, 1fr) auto;
+        gap: 12px;
+        padding: 18px;
+        background: var(--share-panel);
+        border-right: 1px solid var(--share-line);
+      }
+
+      .share-panel-heading {
+        display: flex;
+        align-items: flex-start;
+        justify-content: space-between;
+        gap: 10px;
+      }
+
+      .share-panel-heading h2 {
+        margin: 0;
+        font-size: 13px;
+      }
+
+      .share-panel-heading p {
+        margin: 3px 0 0;
+        color: var(--share-muted);
+        font-size: 9px;
+      }
+
+      .share-heading-actions {
+        display: flex;
+        gap: 4px;
+      }
+
+      .share-heading-actions .tool-button {
+        min-height: 28px;
+        padding: 4px 8px;
+        font-size: 10px;
+      }
+
+      .share-editor {
+        width: 100%;
+        min-height: 0;
+        padding: 13px;
+        resize: none;
+        color: var(--share-text);
+        background: var(--share-soft);
+        border: 1px solid var(--share-line);
+        border-radius: 10px;
+        outline: none;
+        font: 10px/1.7 "SFMono-Regular", Consolas, monospace;
+      }
+
+      .share-editor:focus {
+        border-color: var(--share-primary);
+        box-shadow: 0 0 0 3px color-mix(in srgb, var(--share-primary) 16%, transparent);
+      }
+
+      .share-refresh {
+        width: 100%;
+        color: white;
+        background: var(--share-primary);
+        border-color: var(--share-primary);
+      }
+
+      .share-preview {
+        display: grid;
+        grid-template-rows: auto minmax(0, 1fr);
+        gap: 12px;
+        padding: 18px;
+        background: var(--share-soft);
+      }
+
+      .share-preview-actions {
+        display: flex;
+        align-items: center;
+        gap: 5px;
+      }
+
+      .share-preview-actions .tool-button {
+        min-height: 29px;
+        padding: 4px 9px;
+        font-size: 10px;
+      }
+
+      .share-preview-actions .primary-button {
+        color: white;
+        background: var(--share-primary);
+        border-color: var(--share-primary);
+      }
+
+      .share-stage {
+        display: grid;
+        place-items: start center;
+        min-height: 0;
+        padding: 26px;
+        overflow: auto;
+        background:
+          linear-gradient(45deg, rgba(130, 142, 158, 0.08) 25%, transparent 25%, transparent 75%, rgba(130, 142, 158, 0.08) 75%),
+          linear-gradient(45deg, rgba(130, 142, 158, 0.08) 25%, transparent 25%, transparent 75%, rgba(130, 142, 158, 0.08) 75%);
+        background-color: color-mix(in srgb, var(--share-bg) 80%, #d9e0e8);
+        background-position: 0 0, 8px 8px;
+        background-size: 16px 16px;
+        border: 1px solid var(--share-line);
+        border-radius: 12px;
+      }
+
+      .share-image {
+        width: min(430px, 92%);
+        padding: 28px;
+        color: #202936;
+        background: #ffffff;
+        border-radius: 7px;
+        box-shadow: 0 18px 48px rgba(35, 47, 64, 0.16);
+        transform-origin: top center;
+        transition:
+          width 160ms ease,
+          color 160ms ease,
+          background 160ms ease;
+      }
+
+      .share-image.mobile {
+        width: min(330px, 86%);
+      }
+
+      .share-image.desktop {
+        width: min(520px, 96%);
+      }
+
+      .share-image.dark {
+        color: #e8edf5;
+        background: #171d26;
+      }
+
+      .share-image.background-none {
+        box-shadow: none;
+      }
+
+      .share-image.background-soft {
+        border: 12px solid transparent;
+        background:
+          linear-gradient(#ffffff, #ffffff) padding-box,
+          radial-gradient(circle at 12% 8%, #dfe8ff, #f8f4ff 56%, #e8f6ef) border-box;
+      }
+
+      .share-image.dark.background-soft {
+        background:
+          linear-gradient(#171d26, #171d26) padding-box,
+          radial-gradient(circle at 10% 8%, #314877, #29233d 58%, #17362d) border-box;
+      }
+
+      .share-image h1 {
+        margin: 0 0 12px;
+        font: 700 23px/1.28 ui-serif, "Songti SC", serif;
+      }
+
+      .share-image-title {
+        margin: 0 0 12px;
+        padding-bottom: 9px;
+        color: #6c7890;
+        border-bottom: 1px solid rgba(137, 149, 165, 0.2);
+        font: 650 10px/1.3 -apple-system, BlinkMacSystemFont, sans-serif;
+        letter-spacing: 0.02em;
+      }
+
+      .share-image-title[hidden] {
+        display: none;
+      }
+
+      .share-image h2 {
+        margin: 20px 0 8px;
+        font: 680 16px/1.35 ui-serif, "Songti SC", serif;
+      }
+
+      .share-image p,
+      .share-image li {
+        font: 12px/1.72 ui-serif, "Songti SC", serif;
+      }
+
+      .share-image p {
+        margin: 0 0 10px;
+      }
+
+      .share-image ul {
+        margin: 6px 0 14px;
+        padding-left: 20px;
+      }
+
+      .share-image blockquote {
+        margin: 14px 0;
+        padding: 10px 12px;
+        color: #52627a;
+        background: #f1f5fb;
+        border-left: 3px solid #6f8ee8;
+        border-radius: 0 7px 7px 0;
+        font-size: 11px;
+      }
+
+      .share-image.dark blockquote {
+        color: #b8c6d9;
+        background: #232d3b;
+      }
+
+      .share-image pre {
+        margin: 13px 0;
+        padding: 12px;
+        color: #d6e1ef;
+        background: #17202d;
+        border-radius: 8px;
+        font: 9px/1.6 "SFMono-Regular", monospace;
+      }
+
+      .share-footer {
+        display: flex;
+        justify-content: space-between;
+        margin-top: 22px;
+        padding-top: 10px;
+        color: #98a2b1;
+        border-top: 1px solid rgba(140, 151, 166, 0.2);
+        font: 8px/1.2 -apple-system, BlinkMacSystemFont, sans-serif;
+      }
+
+      .share-image.footer-off .share-footer {
+        display: none;
+      }
+
+      .share-settings {
+        padding: 18px 14px 24px;
+        overflow: auto;
+        background: var(--share-panel);
+        border-left: 1px solid var(--share-line);
+      }
+
+      .share-settings > h2 {
+        margin: 0;
+        font-size: 13px;
+      }
+
+      .share-settings > p {
+        margin: 3px 0 0;
+        color: var(--share-muted);
+        font-size: 9px;
+      }
+
+      .share-config-group {
+        margin-top: 17px;
+        padding-top: 16px;
+        border-top: 1px solid var(--share-line);
+      }
+
+      .share-config-group h3 {
+        margin: 0 0 9px;
+        font-size: 11px;
+      }
+
+      .share-choice-row {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 6px;
+      }
+
+      .share-choice-row.three {
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+      }
+
+      .share-choice {
+        min-height: 42px;
+        padding: 7px 6px;
+        color: var(--share-muted);
+        background: var(--share-soft);
+        border: 1px solid var(--share-line);
+        border-radius: 8px;
+        font-size: 9px;
+        font-weight: 650;
+      }
+
+      .share-choice.active {
+        color: var(--share-primary);
+        background: color-mix(in srgb, var(--share-primary) 10%, var(--share-panel));
+        border-color: color-mix(in srgb, var(--share-primary) 50%, var(--share-line));
+      }
+
+      .share-switch {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 12px;
+        padding: 10px 0;
+        font-size: 10px;
+      }
+
+      .share-switch input {
+        width: 30px;
+        height: 18px;
+        appearance: none;
+        background: #b9c1cd;
+        border-radius: 20px;
+        transition: 120ms ease;
+      }
+
+      .share-switch input::after {
+        content: "";
+        display: block;
+        width: 14px;
+        height: 14px;
+        margin: 2px;
+        background: white;
+        border-radius: 50%;
+        box-shadow: 0 1px 3px rgba(22, 31, 43, 0.25);
+        transition: 120ms ease;
+      }
+
+      .share-switch input:checked {
+        background: var(--share-primary);
+      }
+
+      .share-switch input:checked::after {
+        transform: translateX(12px);
+      }
+
+      /* Each reading concept keeps its own visual language in share mode. */
+      #concept-2 .share-mode {
+        --share-bg: #151b22;
+        --share-panel: #1c232c;
+        --share-soft: #232c37;
+        --share-text: #e7edf5;
+        --share-muted: #8f9bab;
+        --share-line: #303a46;
+        --share-primary: #706cf1;
+      }
+
+      #concept-2 .share-stage {
+        background-color: #11171d;
+      }
+
+      #concept-2 .share-editor {
+        color: #d4dde8;
+      }
+
+      #concept-3 .share-mode {
+        --share-bg: #e7ebf0;
+        --share-panel: #f8fafc;
+        --share-soft: #eef2f6;
+        --share-text: #242c38;
+        --share-muted: #748091;
+        --share-line: #d4dbe4;
+        --share-primary: #3d6dea;
+      }
+
+      #concept-3 .share-source {
+        --share-panel: #1c222b;
+        --share-soft: #202832;
+        --share-text: #cbd5e1;
+        --share-muted: #788494;
+        --share-line: #303a46;
+      }
+
+      #concept-3 .share-source .share-editor {
+        color: #cbd5e1;
+      }
+
+      #concept-4 .share-mode {
+        --share-bg: #eee9e0;
+        --share-panel: #fffdf8;
+        --share-soft: #f5f0e8;
+        --share-text: #494139;
+        --share-muted: #8d8172;
+        --share-line: #ded4c6;
+        --share-primary: #594a3b;
+      }
+
+      #concept-4 .share-topbar {
+        background: rgba(255, 253, 248, 0.9);
+      }
+
+      #concept-4 .share-stage {
+        background:
+          radial-gradient(circle at 12% 10%, rgba(188, 154, 107, 0.1), transparent 28%),
+          #eee9e0;
+      }
+
+      #concept-4 .share-image {
+        background: #fffdf8;
+        border-radius: 3px;
+        box-shadow: 0 22px 55px rgba(74, 59, 40, 0.13);
+      }
+
+      .prototype-toast {
+        position: fixed;
+        z-index: 20;
+        right: 26px;
+        bottom: 25px;
+        padding: 9px 13px;
+        color: white;
+        background: rgba(26, 34, 45, 0.92);
+        border-radius: 9px;
+        box-shadow: 0 10px 28px rgba(22, 29, 39, 0.2);
+        font-size: 11px;
+        opacity: 0;
+        pointer-events: none;
+        transform: translateY(8px);
+        transition: 160ms ease;
+      }
+
+      .prototype-toast.visible {
+        opacity: 1;
+        transform: translateY(0);
+      }
+
+      @media (max-width: 1220px) {
+        .prototype-note {
+          display: none;
+        }
+
+        .reader-one .body {
+          grid-template-columns: 230px minmax(0, 1fr) 190px;
+        }
+
+        .reader-one .article {
+          padding-right: 42px;
+          padding-left: 42px;
+        }
+
+        .recent-cards {
+          grid-template-columns: repeat(3, minmax(180px, 1fr));
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <div class="prototype-shell">
+      <header class="prototype-bar">
+        <div class="prototype-title">
+          <strong>MarkShot · Markdown 阅读模式</strong>
+          <span>4 种信息架构方向，点击中间选项切换</span>
+        </div>
+        <nav class="concept-tabs" aria-label="原型方案">
+          <button class="concept-tab active" data-concept="concept-1">
+            <span class="number">01</span>经典阅读器
+          </button>
+          <button class="concept-tab" data-concept="concept-2">
+            <span class="number">02</span>文档首页
+          </button>
+          <button class="concept-tab" data-concept="concept-3">
+            <span class="number">03</span>双栏工作台
+          </button>
+          <button class="concept-tab" data-concept="concept-4">
+            <span class="number">04</span>沉浸阅读
+          </button>
+        </nav>
+        <div class="prototype-note" id="concept-note">
+          最近文件常驻左侧，正文居中，目录放在右侧。
+        </div>
+      </header>
+
+      <main class="stage">
+        <section class="concept active" id="concept-1">
+          <div class="mac-window reader-one">
+            <header class="titlebar">
+              <div class="titlebar-left">
+                <div class="traffic"><i></i><i></i><i></i></div>
+                <button class="tool-button">
+                  <span class="icon">
+                    <svg viewBox="0 0 24 24"><path d="M4 6h16M4 12h16M4 18h16"/></svg>
+                  </span>
+                </button>
+              </div>
+              <div class="doc-name">
+                <b>MarkShot 产品方向.md</b>
+                <small><span class="dot-live"></span>&nbsp; 正在监听文件变化</small>
+              </div>
+              <div class="title-actions">
+                <button class="tool-button prototype-action">
+                  <span class="icon">
+                    <svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="m20 20-4-4"/></svg>
+                  </span>
+                  搜索
+                </button>
+                <button class="tool-button primary-button share-entry" data-share-open>
+                  <span class="icon">
+                    <svg viewBox="0 0 24 24"><path d="M12 3v12M7 10l5 5 5-5"/><path d="M5 21h14"/></svg>
+                  </span>
+                  快捷分享
+                </button>
+              </div>
+            </header>
+            <div class="body">
+              <aside class="recent-sidebar">
+                <div class="sidebar-heading">
+                  <b>最近打开</b>
+                  <span>全部</span>
+                </div>
+                <div class="recent-list">
+                  <button class="recent-item active">
+                    <span class="file-icon">MD</span>
+                    <span class="recent-copy">
+                      <b>MarkShot 产品方向</b>
+                      <small>刚刚 · RugeProjects</small>
+                    </span>
+                  </button>
+                  <button class="recent-item">
+                    <span class="file-icon">MD</span>
+                    <span class="recent-copy">
+                      <b>周会记录 07-25</b>
+                      <small>今天 15:42 · Documents</small>
+                    </span>
+                  </button>
+                  <button class="recent-item">
+                    <span class="file-icon">MD</span>
+                    <span class="recent-copy">
+                      <b>DeepFOS Agent 说明</b>
+                      <small>昨天 · Downloads</small>
+                    </span>
+                  </button>
+                  <button class="recent-item">
+                    <span class="file-icon">MD</span>
+                    <span class="recent-copy">
+                      <b>README</b>
+                      <small>7月23日 · github/demo</small>
+                    </span>
+                  </button>
+                </div>
+                <button class="tool-button open-file-button prototype-action">
+                  <span class="icon">
+                    <svg viewBox="0 0 24 24"><path d="M3 6h6l2 2h10v10a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2Z"/><path d="M12 11v6M9 14h6"/></svg>
+                  </span>
+                  打开 Markdown
+                </button>
+              </aside>
+              <div class="reading-scroll">
+                <article class="article markdown">
+                  <div class="eyebrow">
+                    <span>本地文档</span><span>·</span><span>最后更新 17:09</span>
+                  </div>
+                  <h1>让 Markdown 重新变得好读、好看、好分享</h1>
+                  <p>
+                    MarkShot 不只是一款把 Markdown 变成长图的工具。它首先应该提供完整、自然的阅读体验，
+                    然后把这份阅读体验延伸为易于分享的图片。
+                  </p>
+                  <blockquote>
+                    阅读和分享不是两套渲染结果，而是同一份 Markdown 内容的两种出口。
+                  </blockquote>
+                  <h2>一、本地阅读</h2>
+                  <p>
+                    双击任意 <code>.md</code> 文件即可打开。文档保持可选中、可搜索，并按照系统主题自动显示。
+                  </p>
+                  <ul>
+                    <li>记录最近打开的文档</li>
+                    <li>监听源文件变化并自动刷新</li>
+                    <li>保留标题、表格、代码和脚注样式</li>
+                  </ul>
+                  <h2>二、分享输出</h2>
+                  <p>
+                    阅读完成后，点击“分享”进入现有的长图配置界面。移动端和 PC 尺寸不影响当前阅读布局。
+                  </p>
+                  <pre>const document = await openMarkdown(path);
+watch(document.path, refreshPreview);</pre>
+                </article>
+              </div>
+              <aside class="outline">
+                <b>文档目录</b>
+                <nav class="outline-list">
+                  <a class="active" href="#">让 Markdown 重新变得好读</a>
+                  <a href="#">一、本地阅读</a>
+                  <a class="level-2" href="#">最近打开</a>
+                  <a class="level-2" href="#">实时刷新</a>
+                  <a href="#">二、分享输出</a>
+                  <a href="#">三、下一步</a>
+                </nav>
+              </aside>
+            </div>
+          </div>
+        </section>
+
+        <section class="concept" id="concept-2">
+          <div class="mac-window reader-two">
+            <aside class="rail">
+              <div class="traffic"><i></i><i></i><i></i></div>
+              <div class="mark-logo">MS</div>
+              <div class="rail-tools">
+                <button class="rail-icon active" title="最近文档">
+                  <span class="icon">
+                    <svg viewBox="0 0 24 24"><path d="M4 5h16v14H4z"/><path d="M8 9h8M8 13h6"/></svg>
+                  </span>
+                </button>
+                <button class="rail-icon" title="收藏">
+                  <span class="icon">
+                    <svg viewBox="0 0 24 24"><path d="m12 3 2.7 5.5 6.1.9-4.4 4.3 1 6.1-5.4-2.9-5.4 2.9 1-6.1-4.4-4.3 6.1-.9Z"/></svg>
+                  </span>
+                </button>
+                <button class="rail-icon" title="分享记录">
+                  <span class="icon">
+                    <svg viewBox="0 0 24 24"><path d="M4 19h16M12 4v11M7 9l5-5 5 5"/></svg>
+                  </span>
+                </button>
+              </div>
+              <button class="rail-icon rail-bottom" title="设置">
+                <span class="icon">
+                  <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19 12a7 7 0 0 0-.1-1l2-1.5-2-3.4-2.4 1A8 8 0 0 0 15 6.2L14.7 4h-4L10.4 6.2A8 8 0 0 0 8.8 7L6.5 6.1l-2 3.4 2 1.5a7 7 0 0 0 0 2l-2 1.5 2 3.4 2.3-1a8 8 0 0 0 1.6.9l.3 2.2h4l.3-2.2a8 8 0 0 0 1.6-.9l2.3 1 2-3.4-2-1.5a7 7 0 0 0 .1-1Z"/></svg>
+                </span>
+              </button>
+            </aside>
+            <main class="home">
+              <header class="home-header">
+                <div>
+                  <h1>下午好，继续阅读</h1>
+                  <p>本地 Markdown 阅读与分享，都从这里开始。</p>
+                </div>
+                <div class="home-actions">
+                  <button class="tool-button prototype-action">
+                    <span class="icon">
+                      <svg viewBox="0 0 24 24"><path d="M4 6h6l2 2h8v11H4z"/></svg>
+                    </span>
+                    打开文件
+                  </button>
+                  <button class="tool-button primary-button share-entry" data-share-open>
+                    <span class="icon">
+                      <svg viewBox="0 0 24 24"><path d="M12 4v16M4 12h16"/></svg>
+                    </span>
+                    快捷分享
+                  </button>
+                </div>
+              </header>
+
+              <div class="section-line">
+                <b>最近打开</b>
+                <span>查看全部 12 个</span>
+              </div>
+              <div class="recent-cards">
+                <button class="recent-card">
+                  <span class="tag"><span class="dot-live"></span>实时刷新中</span>
+                  <h3>MarkShot 产品方向.md</h3>
+                  <p>让 Markdown 重新变得好读、好看、好分享。阅读与分享使用同一套渲染系统。</p>
+                  <time>刚刚</time>
+                </button>
+                <button class="recent-card">
+                  <span class="tag">MARKDOWN</span>
+                  <h3>周会记录 07-25.md</h3>
+                  <p>本周完成长图输出优化，下一步加入本地文档预览和最近文件。</p>
+                  <time>今天 15:42</time>
+                </button>
+                <button class="recent-card">
+                  <span class="tag">README</span>
+                  <h3>DeepFOS Agent 说明.md</h3>
+                  <p>Agent 服务的本地运行方式、接口说明和功能范围。</p>
+                  <time>昨天</time>
+                </button>
+              </div>
+
+              <div class="section-line">
+                <b>快速预览</b>
+                <span>MarkShot 产品方向.md</span>
+              </div>
+              <section class="quick-preview">
+                <div class="quick-paper">
+                  <article class="markdown">
+                    <h1>让 Markdown 重新变得好读</h1>
+                    <p>
+                      MarkShot 不只是一款把 Markdown 变成长图的工具。它首先应该提供完整、自然的阅读体验。
+                    </p>
+                    <h2>本地阅读</h2>
+                    <ul>
+                      <li>双击 Markdown 文件直接打开</li>
+                      <li>记录最近打开的文件</li>
+                      <li>源文件变化后自动刷新</li>
+                    </ul>
+                    <blockquote>阅读和分享，是同一份内容的两种出口。</blockquote>
+                  </article>
+                </div>
+                <aside class="file-info">
+                  <h3>文档信息</h3>
+                  <dl>
+                    <dt>文件</dt><dd>MarkShot 产品方向.md</dd>
+                    <dt>位置</dt><dd>~/RugeProjects/MarkShot</dd>
+                    <dt>字数</dt><dd>1,284</dd>
+                    <dt>修改</dt><dd>今天 17:09</dd>
+                  </dl>
+                  <div class="watch-banner">
+                    <span class="dot-live"></span>
+                    文件监听已开启
+                  </div>
+                </aside>
+              </section>
+            </main>
+          </div>
+        </section>
+
+        <section class="concept" id="concept-3">
+          <div class="mac-window reader-three">
+            <header class="titlebar">
+              <div class="traffic"><i></i><i></i><i></i></div>
+              <div class="app-name">MarkShot</div>
+              <div class="title-tools">
+                <button class="tool-button prototype-action" title="打开文件">
+                  <span class="icon">
+                    <svg viewBox="0 0 24 24"><path d="M3 7h7l2 2h9v10H3z"/></svg>
+                  </span>
+                </button>
+                <button class="tool-button primary-button share-entry" data-share-open>分享图片</button>
+              </div>
+            </header>
+            <nav class="file-tabs">
+              <button class="file-tab active">
+                <span class="tiny-dot"></span>
+                MarkShot 产品方向.md
+                <span>×</span>
+              </button>
+              <button class="file-tab">周会记录.md <span>×</span></button>
+              <button class="file-tab">README.md <span>×</span></button>
+              <button class="file-tab">＋</button>
+            </nav>
+            <div class="studio-body">
+              <section class="source-pane">
+                <header class="pane-heading">
+                  <b>Markdown</b>
+                  <span style="font-size: 9px; color: #6d7988;">UTF-8 · 自动保存关闭</span>
+                </header>
+                <div class="editor-code">
+                  <div class="line-numbers">1<br>2<br>3<br>4<br>5<br>6<br>7<br>8<br>9<br>10<br>11<br>12<br>13<br>14<br>15<br>16<br>17<br>18</div>
+                  <div class="code-lines"><span class="syntax-title"># 让 Markdown 重新变得好读</span>
+
+MarkShot 不只是一款把 Markdown
+变成长图的工具。
+
+<span class="syntax-mark">&gt;</span> 阅读和分享，是同一份内容
+<span class="syntax-mark">&gt;</span> 的两种出口。
+
+<span class="syntax-title">## 本地阅读</span>
+
+<span class="syntax-mark">-</span> 双击 Markdown 文件直接打开
+<span class="syntax-mark">-</span> 记录<span class="syntax-strong">最近打开</span>的文件
+<span class="syntax-mark">-</span> 文件变化后自动刷新
+
+<span class="syntax-title">## 分享输出</span>
+
+点击 <span class="syntax-code">分享图片</span> 进入长图配置。</div>
+                </div>
+              </section>
+              <div class="split-handle"></div>
+              <section class="preview-pane">
+                <header class="pane-heading">
+                  <b>实时预览</b>
+                  <div class="pane-heading-tools">
+                    <span class="dot-live"></span>
+                    <span style="color: #7a8697; font-size: 9px;">已同步</span>
+                    <div class="view-segment">
+                      <button class="active">阅读</button>
+                      <button>长图</button>
+                    </div>
+                  </div>
+                </header>
+                <div class="studio-preview-scroll">
+                  <article class="studio-preview-paper markdown">
+                    <div class="eyebrow">MarkShot 产品方向.md · 本地文档</div>
+                    <h1>让 Markdown 重新变得好读</h1>
+                    <p>
+                      MarkShot 不只是一款把 Markdown 变成长图的工具。它首先应该提供完整、自然的阅读体验，
+                      然后把这份阅读体验延伸为易于分享的图片。
+                    </p>
+                    <blockquote>阅读和分享，是同一份内容的两种出口。</blockquote>
+                    <h2>本地阅读</h2>
+                    <ul>
+                      <li>双击 Markdown 文件直接打开</li>
+                      <li>记录最近打开的文件</li>
+                      <li>文件变化后自动刷新</li>
+                    </ul>
+                    <h2>分享输出</h2>
+                    <p>点击 <code>分享图片</code> 进入长图配置，当前阅读位置不会丢失。</p>
+                  </article>
+                </div>
+              </section>
+            </div>
+            <footer class="statusbar">
+              <div class="status-items">
+                <span><span class="dot-live"></span>&nbsp; 监听中</span>
+                <span>Markdown</span>
+                <span>UTF-8</span>
+              </div>
+              <div class="status-items">
+                <span>行 1，列 1</span>
+                <span>1,284 字</span>
+                <span>100%</span>
+              </div>
+            </footer>
+          </div>
+        </section>
+
+        <section class="concept" id="concept-4">
+          <div class="mac-window reader-four">
+            <header class="zen-titlebar">
+              <div class="zen-title-left">
+                <div class="traffic"><i></i><i></i><i></i></div>
+                <button class="zen-menu-button" id="zen-recent-toggle" title="最近打开">
+                  <span class="icon">
+                    <svg viewBox="0 0 24 24"><path d="M4 5h16v14H4z"/><path d="M8 9h8M8 13h5"/></svg>
+                  </span>
+                </button>
+                <div>
+                  <b>MarkShot 产品方向.md</b><br />
+                  <small><span class="dot-live"></span>&nbsp; 刚刚自动刷新</small>
+                </div>
+              </div>
+              <div class="zen-title-right">
+                <button class="zen-menu-button prototype-action" title="搜索">
+                  <span class="icon">
+                    <svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="m20 20-4-4"/></svg>
+                  </span>
+                </button>
+                <button class="zen-menu-button prototype-action" title="外观">
+                  <span class="icon">
+                    <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2"/></svg>
+                  </span>
+                </button>
+              </div>
+            </header>
+
+            <aside class="zen-recents" id="zen-recents">
+              <h3>最近打开</h3>
+              <button class="recent-item active">
+                <span class="file-icon">MD</span>
+                <span class="recent-copy">
+                  <b>MarkShot 产品方向</b>
+                  <small>刚刚</small>
+                </span>
+              </button>
+              <button class="recent-item">
+                <span class="file-icon">MD</span>
+                <span class="recent-copy">
+                  <b>周会记录 07-25</b>
+                  <small>今天 15:42</small>
+                </span>
+              </button>
+              <button class="recent-item">
+                <span class="file-icon">MD</span>
+                <span class="recent-copy">
+                  <b>README</b>
+                  <small>7月23日</small>
+                </span>
+              </button>
+              <button class="tool-button open-file-button prototype-action">打开其他文件…</button>
+            </aside>
+
+            <div class="zen-scroll">
+              <article class="zen-paper markdown">
+                <div class="zen-meta">
+                  <span>MARKDOWN</span><span>·</span><span>1,284 字</span><span>·</span><span>预计阅读 5 分钟</span>
+                </div>
+                <h1>让 Markdown 重新变得好读、好看、好分享</h1>
+                <p>
+                  MarkShot 不只是一款把 Markdown 变成长图的工具。它首先应该提供完整、自然的阅读体验，
+                  然后把这份阅读体验延伸为易于分享的图片。
+                </p>
+                <blockquote>
+                  阅读和分享不是两套渲染结果，而是同一份 Markdown 内容的两种出口。
+                </blockquote>
+                <h2>本地阅读</h2>
+                <p>
+                  双击任意 <code>.md</code> 文件即可打开。文档保持可选中、可搜索，并按照系统主题自动显示。
+                </p>
+                <ul>
+                  <li>记录最近打开的文档</li>
+                  <li>监听源文件变化并自动刷新</li>
+                  <li>保留标题、表格、代码和脚注样式</li>
+                </ul>
+                <h2>分享输出</h2>
+                <p>
+                  阅读完成后，点击底部“生成长图”进入分享模式。移动端和 PC 尺寸不会影响当前阅读布局。
+                </p>
+              </article>
+            </div>
+
+            <div class="zen-floating">
+              <button class="tool-button prototype-action">
+                <span class="icon">
+                  <svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="m20 20-4-4"/></svg>
+                </span>
+                搜索
+              </button>
+              <button class="tool-button prototype-action">
+                <span class="icon">
+                  <svg viewBox="0 0 24 24"><path d="M6 4h12v16H6z"/><path d="M9 8h6M9 12h6"/></svg>
+                </span>
+                目录
+              </button>
+              <button class="tool-button primary-button share-entry" data-share-open>
+                <span class="icon">
+                  <svg viewBox="0 0 24 24"><path d="M4 5h16v14H4z"/><path d="m8 15 3-3 2 2 3-4 2 3"/></svg>
+                </span>
+                生成长图
+              </button>
+            </div>
+          </div>
+        </section>
+      </main>
+    </div>
+
+    <template id="share-mode-template">
+      <section class="share-mode" aria-label="分享图片模式">
+        <header class="share-topbar">
+          <button class="tool-button share-back" type="button" data-share-close>
+            <span class="icon">
+              <svg viewBox="0 0 24 24"><path d="m14 6-6 6 6 6"/><path d="M9 12h10"/></svg>
+            </span>
+            返回阅读
+          </button>
+          <div class="share-title">
+            <b>快捷分享</b>
+            <small>粘贴 Markdown，生成并复制图片</small>
+          </div>
+          <span class="share-shortcut">⌘ ⌥ T</span>
+        </header>
+
+        <div class="share-workspace">
+          <section class="share-source">
+            <div class="share-panel-heading">
+              <div>
+                <h2>Markdown</h2>
+                <p>剪贴板内容或直接输入</p>
+              </div>
+              <div class="share-heading-actions">
+                <button class="tool-button" type="button" data-share-clear>清空</button>
+                <button class="tool-button" type="button" data-share-paste>粘贴</button>
+              </div>
+            </div>
+            <textarea class="share-editor" spellcheck="false"># 让 Markdown 重新变得好读、好看、好分享
+
+MarkShot 不只是一款把 Markdown 变成长图的工具。它首先提供完整、自然的阅读体验，然后把这份体验延伸为易于分享的图片。
+
+> 阅读和分享，是同一份内容的两种出口。
+
+## 本地阅读
+
+- 双击 Markdown 文件直接打开
+- 记录最近打开的文件
+- 文件变化后自动刷新
+
+## 分享输出
+
+点击“复制图片”后，可以直接粘贴到聊天、邮件或文档中。</textarea>
+            <button class="tool-button share-refresh" type="button" data-share-refresh>
+              更新图片预览
+            </button>
+          </section>
+
+          <section class="share-preview">
+            <div class="share-panel-heading">
+              <div>
+                <h2>图片预览</h2>
+                <p data-share-meta>移动端 · 1080 px</p>
+              </div>
+              <div class="share-preview-actions">
+                <button class="tool-button primary-button" type="button" data-share-copy>
+                  <span class="icon">
+                    <svg viewBox="0 0 24 24"><rect x="8" y="8" width="11" height="11" rx="2"/><path d="M16 8V5a2 2 0 0 0-2-2H5a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h3"/></svg>
+                  </span>
+                  复制图片
+                </button>
+                <button class="tool-button" type="button" data-share-export>导出…</button>
+              </div>
+            </div>
+            <div class="share-stage">
+              <article class="share-image mobile background-plain">
+                <div class="share-image-title" hidden>MarkShot 分享</div>
+                <h1>让 Markdown 重新变得好读、好看、好分享</h1>
+                <p>
+                  MarkShot 不只是一款把 Markdown 变成长图的工具。它首先提供完整、自然的阅读体验，
+                  然后把这份体验延伸为易于分享的图片。
+                </p>
+                <blockquote>阅读和分享，是同一份内容的两种出口。</blockquote>
+                <h2>本地阅读</h2>
+                <ul>
+                  <li>双击 Markdown 文件直接打开</li>
+                  <li>记录最近打开的文件</li>
+                  <li>文件变化后自动刷新</li>
+                </ul>
+                <h2>分享输出</h2>
+                <p>点击“复制图片”后，可以直接粘贴到聊天、邮件或文档中。</p>
+                <pre>⌘ ⌥ T → 读取剪贴板 → 生成图片</pre>
+                <footer class="share-footer">
+                  <span>MarkShot</span>
+                  <span>2026/07/25</span>
+                </footer>
+              </article>
+            </div>
+          </section>
+
+          <aside class="share-settings">
+            <h2>图片配置</h2>
+            <p>快捷生成会沿用这些设置</p>
+
+            <section class="share-config-group">
+              <h3>分享场景</h3>
+              <div class="share-choice-row">
+                <button class="share-choice active" type="button" data-share-profile="mobile">移动端<br>1080 px</button>
+                <button class="share-choice" type="button" data-share-profile="desktop">PC<br>1440 px</button>
+              </div>
+            </section>
+
+            <section class="share-config-group">
+              <h3>颜色主题</h3>
+              <div class="share-choice-row">
+                <button class="share-choice active" type="button" data-share-theme="light">☀ 浅色</button>
+                <button class="share-choice" type="button" data-share-theme="dark">◐ 深色</button>
+              </div>
+              <label class="share-switch">
+                <span>图片标题</span>
+                <input type="checkbox" data-share-title />
+              </label>
+              <label class="share-switch">
+                <span>图片页脚</span>
+                <input type="checkbox" checked data-share-footer />
+              </label>
+            </section>
+
+            <section class="share-config-group">
+              <h3>背景</h3>
+              <div class="share-choice-row three">
+                <button class="share-choice" type="button" data-share-background="none">无</button>
+                <button class="share-choice active" type="button" data-share-background="plain">纯色</button>
+                <button class="share-choice" type="button" data-share-background="soft">柔和</button>
+              </div>
+            </section>
+          </aside>
+        </div>
+      </section>
+    </template>
+
+    <div class="prototype-toast" id="prototype-toast">这是原型交互示意</div>
+
+    <script>
+      const notes = {
+        "concept-1": "最近文件常驻左侧，正文居中，目录放在右侧。",
+        "concept-2": "以最近文档首页为入口，适合文件较多时快速继续阅读。",
+        "concept-3": "保留 Markdown 原文与实时预览，最接近编辑器工作流。",
+        "concept-4": "隐藏大部分工具，只保留阅读与底部分享入口。",
+      };
+
+      const tabs = [...document.querySelectorAll(".concept-tab")];
+      const concepts = [...document.querySelectorAll(".concept")];
+      const note = document.getElementById("concept-note");
+      const toast = document.getElementById("prototype-toast");
+      let toastTimer;
+
+      function showConcept(id) {
+        for (const tab of tabs) tab.classList.toggle("active", tab.dataset.concept === id);
+        for (const concept of concepts) {
+          concept.classList.toggle("active", concept.id === id);
+          concept.classList.remove("sharing");
+        }
+        note.textContent = notes[id];
+      }
+
+      function showToast(message) {
+        clearTimeout(toastTimer);
+        toast.textContent = message;
+        toast.classList.add("visible");
+        toastTimer = setTimeout(() => toast.classList.remove("visible"), 1300);
+      }
+
+      function activateChoice(button, selector) {
+        const group = button.closest(".share-config-group");
+        group.querySelectorAll(selector).forEach((choice) => choice.classList.remove("active"));
+        button.classList.add("active");
+      }
+
+      function updateSharePreview(shareMode) {
+        const source = shareMode.querySelector(".share-editor").value.trim();
+        const image = shareMode.querySelector(".share-image");
+        const lines = source.split(/\r?\n/);
+        const titleLine = lines.find((line) => /^#\s+/.test(line));
+        const paragraphLine = lines.find(
+          (line) =>
+            line.trim() &&
+            !/^(#|>|-|\*|```)/.test(line.trim()),
+        );
+        image.querySelector("h1").textContent = titleLine
+          ? titleLine.replace(/^#\s+/, "")
+          : "等待输入 Markdown";
+        image.querySelector("p").textContent =
+          paragraphLine || "在左侧粘贴内容，然后更新图片预览。";
+        showToast("图片预览已更新");
+      }
+
+      const shareTemplate = document.getElementById("share-mode-template");
+      for (const concept of concepts) {
+        const shareMode = shareTemplate.content.firstElementChild.cloneNode(true);
+        concept.append(shareMode);
+
+        shareMode.querySelector("[data-share-close]").addEventListener("click", () => {
+          concept.classList.remove("sharing");
+          note.textContent = notes[concept.id];
+        });
+
+        const image = shareMode.querySelector(".share-image");
+        const meta = shareMode.querySelector("[data-share-meta]");
+        const editor = shareMode.querySelector(".share-editor");
+        const initialSource = editor.value;
+
+        shareMode.querySelectorAll("[data-share-profile]").forEach((button) => {
+          button.addEventListener("click", () => {
+            activateChoice(button, "[data-share-profile]");
+            const profile = button.dataset.shareProfile;
+            image.classList.toggle("mobile", profile === "mobile");
+            image.classList.toggle("desktop", profile === "desktop");
+            meta.textContent =
+              profile === "mobile" ? "移动端 · 1080 px" : "PC · 1440 px";
+          });
+        });
+
+        shareMode.querySelectorAll("[data-share-theme]").forEach((button) => {
+          button.addEventListener("click", () => {
+            activateChoice(button, "[data-share-theme]");
+            image.classList.toggle("dark", button.dataset.shareTheme === "dark");
+          });
+        });
+
+        shareMode.querySelectorAll("[data-share-background]").forEach((button) => {
+          button.addEventListener("click", () => {
+            activateChoice(button, "[data-share-background]");
+            image.classList.remove(
+              "background-none",
+              "background-plain",
+              "background-soft",
+            );
+            image.classList.add(`background-${button.dataset.shareBackground}`);
+          });
+        });
+
+        shareMode.querySelector("[data-share-footer]").addEventListener("change", (event) => {
+          image.classList.toggle("footer-off", !event.target.checked);
+        });
+
+        shareMode.querySelector("[data-share-title]").addEventListener("change", (event) => {
+          image.querySelector(".share-image-title").hidden = !event.target.checked;
+        });
+
+        shareMode.querySelector("[data-share-clear]").addEventListener("click", () => {
+          editor.value = "";
+          updateSharePreview(shareMode);
+        });
+
+        shareMode.querySelector("[data-share-paste]").addEventListener("click", () => {
+          editor.value = initialSource;
+          updateSharePreview(shareMode);
+          showToast("已粘贴剪贴板示例内容");
+        });
+
+        shareMode.querySelector("[data-share-refresh]").addEventListener("click", () => {
+          updateSharePreview(shareMode);
+        });
+
+        shareMode.querySelector("[data-share-copy]").addEventListener("click", () => {
+          showToast("图片已复制，可直接 Command + V");
+        });
+
+        shareMode.querySelector("[data-share-export]").addEventListener("click", () => {
+          showToast("已打开导出位置选择（原型）");
+        });
+      }
+
+      document.querySelectorAll("[data-share-open]").forEach((button) => {
+        button.addEventListener("click", () => {
+          const concept = button.closest(".concept");
+          concept.classList.add("sharing");
+          note.textContent = `${notes[concept.id]} · 当前：分享图片模式`;
+        });
+      });
+
+      for (const tab of tabs) {
+        tab.addEventListener("click", () => showConcept(tab.dataset.concept));
+      }
+
+      document.querySelectorAll(".prototype-action").forEach((button) => {
+        button.addEventListener("click", () => showToast("这是原型交互示意，功能尚未接入"));
+      });
+
+      document.querySelectorAll(".recent-item").forEach((item) => {
+        item.addEventListener("click", () => {
+          const list = item.closest(".recent-list, .zen-recents");
+          if (list) {
+            list.querySelectorAll(".recent-item").forEach((entry) => entry.classList.remove("active"));
+            item.classList.add("active");
+          }
+          showToast("已切换最近文档");
+        });
+      });
+
+      const zenToggle = document.getElementById("zen-recent-toggle");
+      const zenRecents = document.getElementById("zen-recents");
+      zenToggle.addEventListener("click", () => {
+        zenRecents.hidden = !zenRecents.hidden;
+      });
+    </script>
+  </body>
+</html>

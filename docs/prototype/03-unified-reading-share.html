@@ -1,0 +1,2637 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>MarkShot · 统一阅读与分享原型</title>
+    <style>
+      :root {
+        --chrome: #f6f7f9;
+        --panel: #ffffff;
+        --line: #dfe3e9;
+        --line-soft: #ebedf1;
+        --text: #202631;
+        --muted: #7d8795;
+        --blue: #4777e8;
+        --blue-soft: #eaf0ff;
+        --green: #24a56a;
+        --shadow: 0 18px 55px rgba(31, 43, 62, 0.14);
+        --font: -apple-system, BlinkMacSystemFont, "SF Pro Text", "PingFang SC",
+          "Microsoft YaHei", sans-serif;
+        --serif: ui-serif, "Songti SC", "STSong", serif;
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      html,
+      body {
+        width: 100%;
+        height: 100%;
+        margin: 0;
+        overflow: hidden;
+        color: var(--text);
+        background: #cfd5dd;
+        font-family: var(--font);
+      }
+
+      button,
+      input,
+      textarea {
+        font: inherit;
+      }
+
+      button {
+        color: inherit;
+      }
+
+      .app {
+        display: grid;
+        grid-template-rows: 54px 42px minmax(0, 1fr) 28px;
+        width: 100vw;
+        min-width: 1080px;
+        height: 100vh;
+        min-height: 680px;
+        background: var(--chrome);
+      }
+
+      .titlebar {
+        display: grid;
+        grid-template-columns: 1fr auto 1fr;
+        align-items: center;
+        padding: 0 16px 0 18px;
+        border-bottom: 1px solid var(--line);
+        background: rgba(249, 250, 252, 0.96);
+      }
+
+      .title-left,
+      .title-actions,
+      .brand,
+      .document-state,
+      .toolbar-group,
+      .action-row,
+      .status-group {
+        display: flex;
+        align-items: center;
+      }
+
+      .title-left {
+        gap: 17px;
+      }
+
+      .traffic {
+        display: flex;
+        gap: 8px;
+      }
+
+      .traffic i {
+        width: 12px;
+        height: 12px;
+        border-radius: 50%;
+      }
+
+      .traffic i:nth-child(1) {
+        background: #ff6058;
+      }
+
+      .traffic i:nth-child(2) {
+        background: #ffbd2e;
+      }
+
+      .traffic i:nth-child(3) {
+        background: #28c840;
+      }
+
+      .brand {
+        gap: 8px;
+        font-size: 13px;
+        font-weight: 730;
+      }
+
+      .brand-mark {
+        display: grid;
+        place-items: center;
+        width: 28px;
+        height: 28px;
+        color: white;
+        background: linear-gradient(140deg, #232c3c, #53667f);
+        border-radius: 8px;
+        font-size: 9px;
+        letter-spacing: -0.04em;
+      }
+
+      .document-state {
+        flex-direction: column;
+        gap: 2px;
+        min-width: 240px;
+        text-align: center;
+      }
+
+      .document-state b {
+        max-width: 340px;
+        overflow: hidden;
+        font-size: 12px;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+      }
+
+      .document-state small {
+        color: var(--muted);
+        font-size: 9px;
+      }
+
+      .live-dot,
+      .dirty-dot {
+        display: inline-block;
+        width: 6px;
+        height: 6px;
+        margin-right: 5px;
+        background: var(--green);
+        border-radius: 50%;
+      }
+
+      .dirty-dot {
+        background: #f0a62f;
+      }
+
+      .title-actions {
+        justify-content: flex-end;
+        gap: 7px;
+      }
+
+      .button,
+      .icon-button,
+      .view-switch button,
+      .panel-switch button,
+      .choice {
+        border: 1px solid var(--line);
+        background: white;
+        cursor: pointer;
+        transition: 140ms ease;
+      }
+
+      .button:hover,
+      .icon-button:hover,
+      .choice:hover {
+        border-color: #c5cbd4;
+        background: #fafbfc;
+      }
+
+      .button {
+        min-height: 29px;
+        padding: 0 10px;
+        border-radius: 7px;
+        font-size: 10px;
+        font-weight: 620;
+      }
+
+      .button.primary {
+        color: white;
+        background: var(--blue);
+        border-color: var(--blue);
+      }
+
+      .button.primary:hover {
+        background: #3d69d0;
+      }
+
+      .button.ghost {
+        background: transparent;
+      }
+
+      .icon-button {
+        display: grid;
+        place-items: center;
+        width: 30px;
+        height: 30px;
+        padding: 0;
+        border-radius: 7px;
+      }
+
+      .icon-button svg,
+      .button svg,
+      .view-switch svg {
+        width: 14px;
+        height: 14px;
+        fill: none;
+        stroke: currentColor;
+        stroke-linecap: round;
+        stroke-linejoin: round;
+        stroke-width: 1.7;
+      }
+
+      .shortcut-chip {
+        padding: 5px 8px;
+        color: #546071;
+        background: #eef1f5;
+        border: 1px solid #e0e4e9;
+        border-radius: 6px;
+        cursor: pointer;
+        font-size: 9px;
+        font-weight: 670;
+      }
+
+      .tabbar {
+        display: grid;
+        grid-template-columns: 230px minmax(0, 1fr) 40px;
+        border-bottom: 1px solid var(--line);
+        background: #f0f2f5;
+      }
+
+      .tabbar-label {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 0 13px;
+        color: #5f6977;
+        border-right: 1px solid var(--line);
+        font-size: 10px;
+      }
+
+      .tabbar-label small {
+        color: #9aa2ad;
+        font-size: 8px;
+      }
+
+      .tabs {
+        display: flex;
+        min-width: 0;
+        overflow-x: auto;
+        scrollbar-width: none;
+      }
+
+      .tabs::-webkit-scrollbar {
+        display: none;
+      }
+
+      .document-tab {
+        display: flex;
+        align-items: center;
+        gap: 7px;
+        min-width: 155px;
+        max-width: 225px;
+        height: 42px;
+        padding: 0 10px;
+        color: #687383;
+        background: transparent;
+        border: 0;
+        border-right: 1px solid var(--line);
+        cursor: pointer;
+      }
+
+      .document-tab.active {
+        color: var(--text);
+        background: white;
+        box-shadow: inset 0 2px var(--blue);
+      }
+
+      .tab-icon {
+        display: grid;
+        place-items: center;
+        flex: 0 0 auto;
+        width: 22px;
+        height: 22px;
+        color: #667383;
+        background: #e4e8ee;
+        border-radius: 5px;
+        font-size: 7px;
+        font-weight: 750;
+      }
+
+      .document-tab.temporary .tab-icon {
+        color: #3162cf;
+        background: var(--blue-soft);
+      }
+
+      .tab-label {
+        flex: 1;
+        overflow: hidden;
+        font-size: 10px;
+        text-align: left;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+      }
+
+      .tab-badge {
+        color: #4870c6;
+        font-size: 7px;
+      }
+
+      .tab-close {
+        display: grid;
+        place-items: center;
+        width: 16px;
+        height: 16px;
+        border-radius: 4px;
+        opacity: 0;
+      }
+
+      .document-tab:hover .tab-close,
+      .document-tab.active .tab-close {
+        opacity: 1;
+      }
+
+      .tab-close:hover {
+        background: #e7eaf0;
+      }
+
+      .new-tab {
+        width: 40px;
+        border: 0;
+        border-left: 1px solid var(--line);
+        border-radius: 0;
+        background: transparent;
+        font-size: 17px;
+      }
+
+      .workspace {
+        display: grid;
+        grid-template-columns: 230px minmax(0, 1fr) 255px;
+        min-height: 0;
+      }
+
+      .sidebar,
+      .right-panel {
+        min-height: 0;
+        overflow: auto;
+        background: #f8f9fb;
+      }
+
+      .sidebar {
+        border-right: 1px solid var(--line);
+      }
+
+      .sidebar-section {
+        padding: 14px 11px 10px;
+      }
+
+      .sidebar-section + .sidebar-section {
+        border-top: 1px solid var(--line-soft);
+      }
+
+      .section-heading,
+      .workbench-heading,
+      .right-heading {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+      }
+
+      .section-heading {
+        padding: 0 3px 8px;
+      }
+
+      .section-heading b,
+      .right-heading b {
+        font-size: 10px;
+      }
+
+      .section-heading span {
+        color: var(--muted);
+        font-size: 8px;
+      }
+
+      .file-list {
+        display: grid;
+        gap: 3px;
+      }
+
+      .file-item {
+        display: grid;
+        grid-template-columns: 27px minmax(0, 1fr) auto;
+        gap: 8px;
+        align-items: center;
+        width: 100%;
+        padding: 8px;
+        text-align: left;
+        background: transparent;
+        border: 0;
+        border-radius: 7px;
+        cursor: pointer;
+      }
+
+      .file-item:hover,
+      .file-item.active {
+        background: #e9edf4;
+      }
+
+      .file-item .tab-icon {
+        width: 27px;
+        height: 27px;
+      }
+
+      .file-copy {
+        min-width: 0;
+      }
+
+      .file-copy b,
+      .file-copy small {
+        display: block;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+      }
+
+      .file-copy b {
+        font-size: 9px;
+        font-weight: 650;
+      }
+
+      .file-copy small {
+        margin-top: 3px;
+        color: var(--muted);
+        font-size: 7px;
+      }
+
+      .file-state {
+        color: #4970c4;
+        font-size: 7px;
+      }
+
+      .paste-card {
+        margin: 9px 11px 13px;
+        padding: 11px;
+        background: linear-gradient(145deg, #edf3ff, #f5f8ff);
+        border: 1px solid #dce6fb;
+        border-radius: 9px;
+      }
+
+      .paste-card strong {
+        display: block;
+        font-size: 10px;
+      }
+
+      .paste-card p {
+        margin: 5px 0 9px;
+        color: #6c7890;
+        font-size: 8px;
+        line-height: 1.55;
+      }
+
+      .paste-card .button {
+        width: 100%;
+      }
+
+      .workbench {
+        display: grid;
+        grid-template-rows: 46px minmax(0, 1fr);
+        min-width: 0;
+        min-height: 0;
+        background: #eef1f5;
+      }
+
+      .workbench-heading {
+        padding: 0 12px 0 16px;
+        background: white;
+        border-bottom: 1px solid var(--line);
+      }
+
+      .document-meta {
+        min-width: 0;
+      }
+
+      .document-meta b,
+      .document-meta small {
+        display: block;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+      }
+
+      .document-meta b {
+        font-size: 10px;
+      }
+
+      .document-meta small {
+        margin-top: 3px;
+        color: var(--muted);
+        font-size: 7px;
+      }
+
+      .toolbar-group {
+        gap: 7px;
+      }
+
+      .view-switch,
+      .panel-switch {
+        display: flex;
+        padding: 2px;
+        background: #eef1f5;
+        border: 1px solid #e1e4e9;
+        border-radius: 7px;
+      }
+
+      .view-switch button,
+      .panel-switch button {
+        display: flex;
+        align-items: center;
+        gap: 5px;
+        min-height: 25px;
+        padding: 0 8px;
+        color: #707b89;
+        background: transparent;
+        border: 0;
+        border-radius: 5px;
+        font-size: 8px;
+      }
+
+      .view-switch button.active,
+      .panel-switch button.active {
+        color: var(--text);
+        background: white;
+        box-shadow: 0 1px 4px rgba(35, 46, 61, 0.11);
+      }
+
+      .view-area {
+        position: relative;
+        min-height: 0;
+        overflow: hidden;
+      }
+
+      .view {
+        position: absolute;
+        inset: 0;
+        display: none;
+      }
+
+      .view.active {
+        display: grid;
+      }
+
+      .preview-view {
+        grid-template-rows: 40px minmax(0, 1fr);
+      }
+
+      .preview-bar {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 0 13px;
+        background: #f8f9fb;
+        border-bottom: 1px solid var(--line);
+      }
+
+      .preview-bar p {
+        margin: 0;
+        color: var(--muted);
+        font-size: 8px;
+      }
+
+      .preview-bar p b {
+        color: #465266;
+      }
+
+      .action-row {
+        gap: 6px;
+      }
+
+      .render-stage,
+      .split-preview {
+        min-height: 0;
+        overflow: auto;
+        background:
+          linear-gradient(45deg, rgba(128, 139, 155, 0.055) 25%, transparent 25%, transparent 75%, rgba(128, 139, 155, 0.055) 75%),
+          linear-gradient(45deg, rgba(128, 139, 155, 0.055) 25%, transparent 25%, transparent 75%, rgba(128, 139, 155, 0.055) 75%),
+          #eef1f5;
+        background-position: 0 0, 9px 9px;
+        background-size: 18px 18px;
+      }
+
+      .render-stage {
+        padding: 24px 26px 60px;
+      }
+
+      .document-canvas {
+        width: min(760px, 94%);
+        margin: 0 auto;
+        padding: 33px;
+        background: #e8edf7;
+        border-radius: 13px;
+        transition: 160ms ease;
+      }
+
+      .document-canvas[data-profile="desktop"] {
+        width: min(890px, 97%);
+        padding: 38px;
+      }
+
+      .document-canvas[data-background="none"] {
+        padding: 0;
+        background: transparent;
+      }
+
+      .document-canvas[data-background="soft"] {
+        background:
+          radial-gradient(circle at 15% 10%, rgba(108, 142, 228, 0.28), transparent 34%),
+          radial-gradient(circle at 86% 88%, rgba(174, 119, 222, 0.18), transparent 32%),
+          #eef2fb;
+      }
+
+      .document-card {
+        padding: 46px 52px 30px;
+        color: #273142;
+        background: #ffffff;
+        border-radius: 8px;
+        box-shadow: var(--shadow);
+        transition: 160ms ease;
+      }
+
+      .document-canvas[data-background="none"] .document-card {
+        box-shadow: none;
+      }
+
+      .document-canvas[data-theme="dark"] .document-card {
+        color: #e6ebf3;
+        background: #171d27;
+      }
+
+      .document-title {
+        margin-bottom: 27px;
+        padding-bottom: 17px;
+        border-bottom: 1px solid #e7eaf0;
+      }
+
+      .document-title small {
+        display: block;
+        margin-bottom: 6px;
+        color: #6683ce;
+        font-size: 8px;
+        font-weight: 750;
+        letter-spacing: 0.12em;
+        text-transform: uppercase;
+      }
+
+      .document-title h1,
+      .article h1 {
+        margin: 0;
+        font: 750 28px/1.33 var(--serif);
+        letter-spacing: -0.025em;
+      }
+
+      .article {
+        user-select: text;
+      }
+
+      .article h1 {
+        margin-bottom: 19px;
+      }
+
+      .article h2 {
+        margin: 31px 0 11px;
+        font: 720 19px/1.45 var(--serif);
+      }
+
+      .article h3 {
+        margin: 23px 0 8px;
+        font: 700 15px/1.45 var(--serif);
+      }
+
+      .article p,
+      .article li {
+        font: 13px/1.9 var(--serif);
+      }
+
+      .article p {
+        margin: 10px 0;
+      }
+
+      .article ul {
+        margin: 10px 0;
+        padding-left: 23px;
+      }
+
+      .article blockquote {
+        margin: 20px 0;
+        padding: 13px 16px;
+        color: #536379;
+        background: #f1f5fb;
+        border-left: 3px solid #6f8fe2;
+        border-radius: 0 7px 7px 0;
+        font: 12px/1.8 var(--serif);
+      }
+
+      .article pre {
+        margin: 18px 0;
+        padding: 15px 17px;
+        overflow: auto;
+        color: #d9e1ee;
+        background: #171e29;
+        border-radius: 8px;
+        font: 10px/1.7 ui-monospace, SFMono-Regular, Menlo, monospace;
+      }
+
+      .article code:not(pre code) {
+        padding: 2px 5px;
+        color: #4262a9;
+        background: #edf2fb;
+        border-radius: 4px;
+        font: 0.88em ui-monospace, SFMono-Regular, Menlo, monospace;
+      }
+
+      .document-canvas[data-theme="dark"] .article blockquote {
+        color: #b7c2d2;
+        background: #232d3b;
+      }
+
+      .document-canvas[data-theme="dark"] .article code:not(pre code) {
+        color: #b8caff;
+        background: #283344;
+      }
+
+      .document-canvas[data-theme="dark"] .document-title {
+        border-bottom-color: #303a49;
+      }
+
+      .image-footer {
+        display: flex;
+        justify-content: space-between;
+        margin-top: 33px;
+        padding-top: 12px;
+        color: #98a2b1;
+        border-top: 1px solid #e8ebf0;
+        font-size: 8px;
+      }
+
+      .document-canvas[data-theme="dark"] .image-footer {
+        color: #778396;
+        border-top-color: #303947;
+      }
+
+      .split-view {
+        grid-template-columns: minmax(300px, 0.86fr) 1px minmax(390px, 1.14fr);
+      }
+
+      .source-pane,
+      .source-view {
+        min-height: 0;
+        background: #1b212c;
+      }
+
+      .source-pane {
+        display: grid;
+        grid-template-rows: 38px minmax(0, 1fr);
+      }
+
+      .pane-title {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 0 13px;
+        color: #aab5c5;
+        border-bottom: 1px solid #303744;
+        font-size: 8px;
+      }
+
+      .pane-title b {
+        color: #e4e9f1;
+        font-size: 9px;
+      }
+
+      .markdown-source {
+        width: 100%;
+        height: 100%;
+        padding: 22px 24px 70px;
+        resize: none;
+        color: #d9e1ed;
+        background: #1b212c;
+        border: 0;
+        outline: none;
+        font: 11px/1.8 ui-monospace, SFMono-Regular, Menlo, monospace;
+        tab-size: 2;
+      }
+
+      .splitter {
+        background: var(--line);
+      }
+
+      .split-preview {
+        padding: 20px 22px 55px;
+      }
+
+      .split-preview .document-canvas {
+        width: min(650px, 96%);
+        padding: 24px;
+      }
+
+      .split-preview .document-card {
+        padding: 34px 38px 25px;
+      }
+
+      .source-view {
+        grid-template-rows: 38px minmax(0, 1fr);
+      }
+
+      .right-panel {
+        border-left: 1px solid var(--line);
+        background: white;
+      }
+
+      .right-top {
+        position: sticky;
+        z-index: 2;
+        top: 0;
+        padding: 10px 11px 8px;
+        background: rgba(255, 255, 255, 0.97);
+        border-bottom: 1px solid var(--line-soft);
+      }
+
+      .panel-switch {
+        width: 100%;
+      }
+
+      .panel-switch button {
+        flex: 1;
+        justify-content: center;
+      }
+
+      .right-content {
+        display: none;
+        padding: 13px 12px 22px;
+      }
+
+      .right-content.active {
+        display: block;
+      }
+
+      .right-heading {
+        margin-bottom: 9px;
+        padding: 0 2px;
+      }
+
+      .right-heading span {
+        color: var(--muted);
+        font-size: 8px;
+      }
+
+      .outline-list {
+        display: grid;
+        gap: 2px;
+      }
+
+      .outline-list button {
+        width: 100%;
+        padding: 7px 8px;
+        overflow: hidden;
+        color: #647081;
+        text-align: left;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+        background: transparent;
+        border: 0;
+        border-radius: 6px;
+        cursor: pointer;
+        font-size: 9px;
+      }
+
+      .outline-list button:hover,
+      .outline-list button.active {
+        color: #315db9;
+        background: var(--blue-soft);
+      }
+
+      .outline-list button.level-2 {
+        padding-left: 19px;
+        font-size: 8px;
+      }
+
+      .concept-note {
+        margin-top: 14px;
+        padding: 10px;
+        color: #62708a;
+        background: #f1f5fc;
+        border: 1px solid #e1e8f7;
+        border-radius: 8px;
+        font-size: 8px;
+        line-height: 1.6;
+      }
+
+      .config-group {
+        padding: 12px 1px 14px;
+        border-bottom: 1px solid var(--line-soft);
+      }
+
+      .config-group:first-child {
+        padding-top: 0;
+      }
+
+      .config-group:last-child {
+        border-bottom: 0;
+      }
+
+      .config-group h3 {
+        margin: 0 0 9px;
+        font-size: 9px;
+      }
+
+      .choice-grid {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 6px;
+      }
+
+      .choice-grid.three {
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+      }
+
+      .choice {
+        min-height: 42px;
+        padding: 6px;
+        color: #687486;
+        border-radius: 7px;
+        font-size: 8px;
+      }
+
+      .choice b,
+      .choice small {
+        display: block;
+      }
+
+      .choice b {
+        color: #394453;
+        font-size: 9px;
+      }
+
+      .choice small {
+        margin-top: 3px;
+        color: #8c96a3;
+        font-size: 7px;
+      }
+
+      .choice.active {
+        color: #315ebd;
+        background: var(--blue-soft);
+        border-color: #8eaae8;
+        box-shadow: inset 0 0 0 1px #adc1ef;
+      }
+
+      .switch-row {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 9px 1px 3px;
+      }
+
+      .switch-row span b,
+      .switch-row span small {
+        display: block;
+      }
+
+      .switch-row span b {
+        font-size: 9px;
+      }
+
+      .switch-row span small {
+        margin-top: 3px;
+        color: var(--muted);
+        font-size: 7px;
+      }
+
+      .switch-row input {
+        width: 29px;
+        height: 17px;
+        margin: 0;
+        appearance: none;
+        background: #c9ced6;
+        border-radius: 20px;
+        cursor: pointer;
+      }
+
+      .switch-row input::after {
+        content: "";
+        display: block;
+        width: 13px;
+        height: 13px;
+        margin: 2px;
+        background: white;
+        border-radius: 50%;
+        box-shadow: 0 1px 3px rgba(36, 46, 61, 0.24);
+        transition: 130ms ease;
+      }
+
+      .switch-row input:checked {
+        background: var(--blue);
+      }
+
+      .switch-row input:checked::after {
+        transform: translateX(12px);
+      }
+
+      .title-input {
+        width: 100%;
+        margin-top: 8px;
+        padding: 8px 9px;
+        border: 1px solid var(--line);
+        border-radius: 7px;
+        outline: none;
+        font-size: 8px;
+      }
+
+      .statusbar {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 0 12px;
+        color: #75808e;
+        background: #f4f6f8;
+        border-top: 1px solid var(--line);
+        font-size: 8px;
+      }
+
+      .status-group {
+        gap: 13px;
+      }
+
+      .toast {
+        position: fixed;
+        z-index: 50;
+        right: 20px;
+        bottom: 42px;
+        max-width: 360px;
+        padding: 10px 14px;
+        color: white;
+        background: rgba(28, 37, 50, 0.95);
+        border: 1px solid rgba(255, 255, 255, 0.13);
+        border-radius: 9px;
+        box-shadow: 0 14px 34px rgba(27, 36, 49, 0.22);
+        font-size: 9px;
+        opacity: 0;
+        pointer-events: none;
+        transform: translateY(7px);
+        transition: 150ms ease;
+      }
+
+      .toast.visible {
+        opacity: 1;
+        transform: translateY(0);
+      }
+
+      .shortcut-popover {
+        position: fixed;
+        z-index: 45;
+        top: 48px;
+        right: 48px;
+        width: 285px;
+        padding: 14px;
+        background: rgba(255, 255, 255, 0.98);
+        border: 1px solid var(--line);
+        border-radius: 11px;
+        box-shadow: 0 20px 55px rgba(31, 42, 58, 0.2);
+      }
+
+      .shortcut-popover[hidden] {
+        display: none;
+      }
+
+      .shortcut-popover h3 {
+        margin: 0;
+        font-size: 11px;
+      }
+
+      .shortcut-popover p {
+        margin: 6px 0 11px;
+        color: var(--muted);
+        font-size: 8px;
+        line-height: 1.55;
+      }
+
+      .shortcut-steps {
+        display: grid;
+        grid-template-columns: repeat(4, 1fr);
+        gap: 5px;
+        margin-bottom: 11px;
+      }
+
+      .shortcut-steps div {
+        padding: 7px 4px;
+        color: #697589;
+        text-align: center;
+        background: #f2f5f9;
+        border-radius: 6px;
+        font-size: 7px;
+        line-height: 1.4;
+      }
+
+      .shortcut-steps b {
+        display: block;
+        margin-bottom: 3px;
+        color: #416bc4;
+        font-size: 8px;
+      }
+
+      .desktop-demo {
+        position: fixed;
+        z-index: 80;
+        inset: 0;
+        display: none;
+        place-items: center;
+        color: white;
+        background:
+          radial-gradient(circle at 20% 20%, rgba(75, 108, 173, 0.8), transparent 38%),
+          radial-gradient(circle at 78% 72%, rgba(77, 50, 120, 0.65), transparent 40%),
+          linear-gradient(145deg, #17202d, #26364b);
+      }
+
+      .desktop-demo.active {
+        display: grid;
+      }
+
+      .desktop-copy {
+        text-align: center;
+      }
+
+      .desktop-copy .mini-app {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        margin-bottom: 18px;
+        padding: 8px 12px;
+        background: rgba(255, 255, 255, 0.12);
+        border: 1px solid rgba(255, 255, 255, 0.18);
+        border-radius: 9px;
+        backdrop-filter: blur(18px);
+        font-size: 9px;
+      }
+
+      .desktop-copy h2 {
+        margin: 0;
+        font-size: 20px;
+      }
+
+      .desktop-copy p {
+        margin: 9px 0 18px;
+        color: rgba(255, 255, 255, 0.72);
+        font-size: 10px;
+      }
+
+      .keycap {
+        display: inline-block;
+        margin: 0 2px;
+        padding: 5px 8px;
+        color: white;
+        background: rgba(255, 255, 255, 0.13);
+        border: 1px solid rgba(255, 255, 255, 0.22);
+        border-radius: 6px;
+        box-shadow: 0 3px 0 rgba(0, 0, 0, 0.18);
+        font-size: 11px;
+      }
+
+      .hud {
+        position: absolute;
+        top: 22px;
+        left: 50%;
+        min-width: 330px;
+        padding: 13px 18px;
+        text-align: center;
+        background: rgba(19, 27, 38, 0.92);
+        border: 1px solid rgba(255, 255, 255, 0.14);
+        border-radius: 12px;
+        box-shadow: 0 18px 45px rgba(0, 0, 0, 0.3);
+        font-size: 10px;
+        opacity: 0;
+        transform: translate(-50%, -10px);
+        transition: 160ms ease;
+      }
+
+      .hud.visible {
+        opacity: 1;
+        transform: translate(-50%, 0);
+      }
+
+      /* Refined unified workspace: the document is the preview surface. */
+      .titlebar {
+        grid-template-columns: 190px minmax(170px, 1fr) auto;
+        gap: 12px;
+      }
+
+      .title-actions {
+        gap: 6px;
+      }
+
+      .title-actions .view-switch {
+        flex: 0 0 auto;
+      }
+
+      .title-actions .icon-button.active {
+        color: #315ebd;
+        background: var(--blue-soft);
+        border-color: #b8c9ee;
+      }
+
+      .tabbar-label {
+        justify-content: flex-start;
+        gap: 8px;
+      }
+
+      .clipboard-inbox {
+        display: grid;
+        grid-template-columns: 31px minmax(0, 1fr) auto;
+        gap: 9px;
+        align-items: center;
+        width: calc(100% - 22px);
+        margin: 12px 11px 6px;
+        padding: 10px;
+        text-align: left;
+        background: #eef3fd;
+        border: 1px solid #dce5f8;
+        border-radius: 9px;
+        cursor: pointer;
+      }
+
+      .clipboard-inbox:hover,
+      .clipboard-inbox.active {
+        background: #e5edfc;
+        border-color: #b9cbee;
+      }
+
+      .clipboard-inbox .tab-icon {
+        width: 31px;
+        height: 31px;
+        color: #3763bc;
+        background: white;
+      }
+
+      .clipboard-inbox .file-state {
+        padding: 3px 5px;
+        background: rgba(255, 255, 255, 0.72);
+        border-radius: 4px;
+      }
+
+      .inbox-actions {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 6px;
+        margin: 0 11px 12px;
+      }
+
+      .inbox-hint {
+        margin: 0 14px 10px;
+        color: #7b8798;
+        font-size: 7px;
+        line-height: 1.55;
+      }
+
+      .workbench {
+        grid-template-rows: minmax(0, 1fr);
+      }
+
+      .workbench-heading,
+      .preview-bar,
+      .right-top,
+      .concept-note {
+        display: none;
+      }
+
+      .preview-view {
+        grid-template-rows: minmax(0, 1fr);
+      }
+
+      .render-stage,
+      .split-preview {
+        background: #ffffff;
+      }
+
+      .render-stage {
+        padding: 33px 36px 70px;
+      }
+
+      .document-canvas,
+      .document-canvas[data-profile="desktop"],
+      .split-preview .document-canvas {
+        width: min(780px, 94%);
+        padding: 0;
+        background: transparent;
+        border-radius: 0;
+      }
+
+      .document-canvas[data-profile="desktop"] {
+        width: min(900px, 97%);
+      }
+
+      .document-card,
+      .split-preview .document-card {
+        padding: 27px 34px 30px;
+        border-radius: 0;
+        box-shadow: none;
+      }
+
+      .document-canvas[data-background="plain"],
+      .document-canvas[data-background="soft"] {
+        padding: 32px;
+        border-radius: 12px;
+      }
+
+      .document-canvas[data-background="plain"] {
+        background: #edf1f7;
+      }
+
+      .document-canvas[data-background="soft"] {
+        background:
+          radial-gradient(circle at 15% 10%, rgba(108, 142, 228, 0.28), transparent 34%),
+          radial-gradient(circle at 86% 88%, rgba(174, 119, 222, 0.18), transparent 32%),
+          #eef2fb;
+      }
+
+      .document-canvas[data-background="plain"] .document-card,
+      .document-canvas[data-background="soft"] .document-card {
+        border-radius: 8px;
+        box-shadow: var(--shadow);
+      }
+
+      .right-content {
+        padding-top: 16px;
+      }
+
+      .operationbar {
+        display: grid;
+        grid-template-columns: 300px minmax(0, 1fr);
+        border-bottom: 1px solid var(--line);
+        background: #f3f5f8;
+        transition: grid-template-columns 160ms ease;
+      }
+
+      .operationbar-sidebar {
+        display: flex;
+        align-items: center;
+        gap: 5px;
+        min-width: 0;
+        padding: 0 7px;
+        color: #667181;
+        border-right: 1px solid var(--line);
+        font-size: 9px;
+        overflow: hidden;
+        white-space: nowrap;
+      }
+
+      .operationbar-main {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        min-width: 0;
+        padding: 0 10px;
+      }
+
+      .operationbar-left,
+      .operationbar-right {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+      }
+
+      .operation-document {
+        min-width: 0;
+        padding-right: 12px;
+      }
+
+      .operation-document b,
+      .operation-document small {
+        display: block;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+      }
+
+      .operation-document b {
+        font-size: 9px;
+      }
+
+      .operation-document small {
+        margin-top: 3px;
+        color: var(--muted);
+        font-size: 7px;
+      }
+
+      .toolbar-divider {
+        width: 1px;
+        height: 21px;
+        margin: 0 2px;
+        background: var(--line);
+      }
+
+      .share-split {
+        position: relative;
+        display: flex;
+      }
+
+      .share-split > .button:first-child {
+        border-radius: 7px 0 0 7px;
+      }
+
+      .share-split-toggle {
+        min-width: 26px;
+        padding: 0;
+        border-left-color: rgba(255, 255, 255, 0.28);
+        border-radius: 0 7px 7px 0;
+      }
+
+      .share-menu {
+        position: absolute;
+        z-index: 35;
+        top: calc(100% + 6px);
+        right: 0;
+        width: 116px;
+        padding: 5px;
+        background: white;
+        border: 1px solid var(--line);
+        border-radius: 8px;
+        box-shadow: 0 13px 30px rgba(31, 42, 58, 0.18);
+      }
+
+      .share-menu[hidden] {
+        display: none;
+      }
+
+      .share-menu button {
+        width: 100%;
+        min-height: 28px;
+        text-align: left;
+        background: transparent;
+        border: 0;
+        border-radius: 5px;
+        cursor: pointer;
+        font-size: 9px;
+      }
+
+      .share-menu button:hover {
+        background: #eef2f8;
+      }
+
+      .operationbar .button {
+        min-height: 28px;
+      }
+
+      .operationbar .button.active {
+        color: #315ebd;
+        background: var(--blue-soft);
+        border-color: #b8c9ee;
+      }
+
+      .operationbar .view-switch {
+        margin: 0 10px;
+      }
+
+      .workspace {
+        grid-template-columns: 300px minmax(0, 1fr);
+        transition: grid-template-columns 160ms ease;
+      }
+
+      .app.style-open .workspace {
+        grid-template-columns: 300px minmax(0, 1fr);
+      }
+
+      .app.sidebar-collapsed .operationbar {
+        grid-template-columns: 48px minmax(0, 1fr);
+      }
+
+      .app.sidebar-collapsed .workspace {
+        grid-template-columns: 0 minmax(0, 1fr);
+      }
+
+      .app.sidebar-collapsed.style-open .workspace {
+        grid-template-columns: 0 minmax(0, 1fr);
+      }
+
+      .app.sidebar-collapsed .operationbar-sidebar {
+        justify-content: center;
+        padding: 0;
+        border-right: 0;
+      }
+
+      .app.sidebar-collapsed .operationbar-sidebar span {
+        display: none;
+      }
+
+      .app.sidebar-collapsed .sidebar-header-tabs {
+        display: none;
+      }
+
+      .sidebar {
+        display: grid;
+        grid-template-rows: minmax(0, 1fr);
+        min-width: 0;
+        overflow: hidden;
+        transition: opacity 120ms ease;
+      }
+
+      .app.sidebar-collapsed .sidebar {
+        opacity: 0;
+        pointer-events: none;
+      }
+
+      .right-panel {
+        position: sticky;
+        top: 0;
+        align-self: start;
+        width: auto;
+        min-width: 0;
+        min-height: 100%;
+        visibility: visible;
+        overflow: visible;
+        background: white;
+        border-left: 0;
+        opacity: 1;
+      }
+
+      .app.style-open .right-panel {
+        visibility: visible;
+        opacity: 1;
+      }
+
+      .titlebar {
+        grid-template-columns: 1fr auto;
+      }
+
+      .title-actions {
+        justify-content: flex-end;
+      }
+
+      .collapse-button {
+        display: grid;
+        place-items: center;
+        flex: 0 0 auto;
+        width: 27px;
+        height: 27px;
+        padding: 0;
+        color: #667181;
+        background: transparent;
+        border: 0;
+        cursor: pointer;
+      }
+
+      .collapse-button:hover {
+        color: var(--blue);
+      }
+
+      .collapse-button svg {
+        width: 15px;
+        height: 15px;
+        fill: none;
+        stroke: currentColor;
+        stroke-linecap: round;
+        stroke-linejoin: round;
+        stroke-width: 1.7;
+      }
+
+      .sidebar-header-tabs {
+        display: flex;
+        flex: 1;
+        min-width: 0;
+        padding: 2px;
+        background: #e9edf3;
+        border: 1px solid #e0e4ea;
+        border-radius: 7px;
+      }
+
+      .sidebar-header-tabs button {
+        flex: 1;
+        min-height: 25px;
+        color: #74808f;
+        background: transparent;
+        border: 0;
+        border-radius: 5px;
+        cursor: pointer;
+        font-size: 9px;
+        font-weight: 650;
+        text-align: center;
+      }
+
+      .sidebar-header-tabs button.active {
+        color: var(--text);
+        background: white;
+        box-shadow: 0 1px 4px rgba(35, 46, 61, 0.11);
+      }
+
+      .sidebar-panel {
+        display: none;
+        min-height: 0;
+        overflow: auto;
+      }
+
+      .sidebar-panel.active {
+        display: block;
+      }
+
+      .sidebar-panel.draft-panel.active {
+        display: grid;
+        grid-template-rows: minmax(0, 1fr) auto;
+        overflow: hidden;
+      }
+
+      .sidebar-draft-editor {
+        width: 100%;
+        height: 100%;
+        min-height: 0;
+        padding: 14px;
+        resize: none;
+        color: #303948;
+        background: white;
+        border: 0;
+        outline: none;
+        font: 10px/1.7 ui-monospace, SFMono-Regular, Menlo, monospace;
+      }
+
+      .draft-footer {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 8px;
+        padding: 9px 10px;
+        color: #7e8998;
+        background: transparent;
+        border-top: 0;
+        font-size: 7px;
+      }
+
+      .draft-footer-actions {
+        display: flex;
+        align-items: center;
+        flex: 0 0 auto;
+        gap: 4px;
+      }
+
+      .text-action {
+        padding: 4px 5px;
+        color: #8892a0;
+        background: transparent;
+        border: 0;
+        cursor: pointer;
+        font-size: 8px;
+      }
+
+      .text-action.secondary {
+        color: #4269bc;
+      }
+
+      .text-action.save-action {
+        color: #53657e;
+        font-weight: 650;
+      }
+
+      .content-scroll {
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) 240px;
+        min-width: 0;
+        min-height: 0;
+        overflow-y: auto;
+        overflow-x: hidden;
+        background: white;
+      }
+
+      .workbench {
+        min-height: 100%;
+      }
+
+      .view-area {
+        position: static;
+        min-height: 100%;
+        overflow: visible;
+      }
+
+      .view {
+        position: static;
+        inset: auto;
+        min-height: 100%;
+      }
+
+      .preview-view.active {
+        display: block;
+      }
+
+      .render-stage,
+      .split-preview {
+        min-height: 100%;
+        overflow: visible;
+      }
+
+      .split-view.active,
+      .source-view.active {
+        min-height: calc(100vh - 124px);
+      }
+
+      .right-content {
+        padding: 30px 18px 40px 8px;
+      }
+
+      .outline-list button {
+        padding: 7px 8px 7px 12px;
+        background: transparent;
+        border-left: 2px solid transparent;
+        border-radius: 0;
+      }
+
+      .outline-list button:hover {
+        color: #315db9;
+        background: transparent;
+      }
+
+      .outline-list button.active {
+        color: #315db9;
+        background: transparent;
+        border-left-color: var(--blue);
+      }
+
+      .outline-list button.level-1 {
+        padding-left: 22px;
+      }
+
+      .outline-list button.level-2 {
+        padding-left: 33px;
+      }
+
+      .modal-backdrop {
+        position: fixed;
+        z-index: 70;
+        inset: 0;
+        display: grid;
+        place-items: center;
+        background: rgba(24, 32, 44, 0.28);
+        backdrop-filter: blur(3px);
+      }
+
+      .modal-backdrop[hidden] {
+        display: none;
+      }
+
+      .save-dialog {
+        width: 390px;
+        padding: 17px;
+        background: white;
+        border: 1px solid var(--line);
+        border-radius: 12px;
+        box-shadow: 0 24px 70px rgba(28, 39, 55, 0.26);
+      }
+
+      .save-dialog h2 {
+        margin: 0;
+        font-size: 13px;
+      }
+
+      .save-dialog p {
+        margin: 5px 0 13px;
+        color: var(--muted);
+        font-size: 9px;
+      }
+
+      .save-path-input {
+        width: 100%;
+        padding: 9px 10px;
+        border: 1px solid var(--line);
+        border-radius: 7px;
+        outline: none;
+        font-size: 9px;
+      }
+
+      .save-dialog-actions {
+        display: flex;
+        justify-content: flex-end;
+        gap: 6px;
+        margin-top: 13px;
+      }
+
+      @media (max-width: 1180px) {
+        .operationbar {
+          grid-template-columns: 280px minmax(0, 1fr);
+        }
+
+        .workspace {
+          grid-template-columns: 280px minmax(0, 1fr);
+        }
+
+        .app.style-open .workspace {
+          grid-template-columns: 280px minmax(0, 1fr);
+        }
+
+        .app.sidebar-collapsed .workspace {
+          grid-template-columns: 0 minmax(0, 1fr);
+        }
+
+        .app.sidebar-collapsed.style-open .workspace {
+          grid-template-columns: 0 minmax(0, 1fr);
+        }
+
+        .content-scroll {
+          grid-template-columns: minmax(0, 1fr) 220px;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <main class="app" id="app">
+      <header class="titlebar">
+        <div class="title-left">
+          <div class="traffic" aria-hidden="true"><i></i><i></i><i></i></div>
+          <div class="brand"><span class="brand-mark">MS</span><span>MarkShot</span></div>
+        </div>
+        <div class="title-actions">
+          <span class="shortcut-chip" id="shortcut-chip" title="查看全局快捷键说明">⌘ ⌥ T</span>
+          <button class="icon-button" type="button" title="设置" data-toast="快捷键与应用设置（原型）">
+            <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.9l-2.8 2.8A1.7 1.7 0 0 0 15 19.4a1.7 1.7 0 0 0-1.4 1.6h-4A1.7 1.7 0 0 0 8 19.4a1.7 1.7 0 0 0-1.9.3l-2.8-2.8A1.7 1.7 0 0 0 4.6 15 1.7 1.7 0 0 0 3 13.6v-4A1.7 1.7 0 0 0 4.6 8a1.7 1.7 0 0 0-.3-1.9l2.8-2.8A1.7 1.7 0 0 0 9 4.6 1.7 1.7 0 0 0 10.4 3h4A1.7 1.7 0 0 0 16 4.6a1.7 1.7 0 0 0 1.9-.3l2.8 2.8A1.7 1.7 0 0 0 19.4 9a1.7 1.7 0 0 0 1.6 1.4v4A1.7 1.7 0 0 0 19.4 15Z"/></svg>
+          </button>
+        </div>
+      </header>
+
+      <nav class="operationbar" aria-label="文档操作">
+        <div class="operationbar-sidebar">
+          <button class="collapse-button" id="toggle-sidebar" type="button" title="收起内容侧栏">
+            <svg viewBox="0 0 24 24"><path d="M4 5h16v14H4zM9 5v14"/><path d="m7 10-2 2 2 2"/></svg>
+          </button>
+          <div class="sidebar-header-tabs" aria-label="侧栏内容">
+            <button class="active" type="button" data-sidebar-mode="draft">即时</button>
+            <button type="button" data-sidebar-mode="files">文件</button>
+          </div>
+        </div>
+        <div class="operationbar-main">
+          <div class="operation-document">
+            <b id="document-toolbar-title">即时分享</b>
+            <small id="document-toolbar-path">暂存于内存 · 尚未保存为文件</small>
+          </div>
+          <div class="view-switch" aria-label="切换视图">
+            <button class="active" type="button" data-view="preview">
+              <svg viewBox="0 0 24 24"><path d="M5 4h14v16H5z"/><path d="M8 8h8M8 12h8M8 16h5"/></svg>预览
+            </button>
+            <button type="button" data-view="split">
+              <svg viewBox="0 0 24 24"><path d="M3 5h18v14H3zM11 5v14"/></svg>双栏
+            </button>
+            <button type="button" data-view="source">
+              <svg viewBox="0 0 24 24"><path d="m8 8-4 4 4 4M16 8l4 4-4 4M14 5l-4 14"/></svg>源码
+            </button>
+          </div>
+          <div class="operationbar-right">
+            <div class="share-split">
+              <button class="button primary copy-image" type="button">复制图片</button>
+              <button class="button primary share-split-toggle" id="share-menu-toggle" type="button" aria-label="更多图片操作">⌄</button>
+              <div class="share-menu" id="share-menu" hidden>
+                <button class="export-image" type="button">导出图片</button>
+              </div>
+            </div>
+            <span class="toolbar-divider" aria-hidden="true"></span>
+            <button class="button" id="toggle-style-panel" type="button">风格</button>
+          </div>
+        </div>
+      </nav>
+
+      <div class="workspace">
+        <aside class="sidebar">
+          <section class="sidebar-panel draft-panel active" data-sidebar-panel="draft">
+            <textarea
+              class="sidebar-draft-editor"
+              id="sidebar-draft-editor"
+              spellcheck="false"
+              placeholder="在这里输入或粘贴要分享的内容…"
+            ></textarea>
+            <footer class="draft-footer">
+              <div class="draft-footer-actions">
+                <button class="text-action" id="clear-draft" type="button">清除</button>
+                <button class="text-action secondary" id="sidebar-paste" type="button">粘贴</button>
+              </div>
+              <button class="text-action save-action" id="keep-draft" type="button">保存文档</button>
+            </footer>
+          </section>
+
+          <section class="sidebar-panel files-panel" data-sidebar-panel="files">
+            <section class="sidebar-section">
+              <div class="section-heading"><b>已打开</b><span>2 个文档</span></div>
+              <div class="file-list" id="opened-list">
+                <button class="file-item" type="button" data-open-document="product">
+                  <span class="tab-icon">MD</span>
+                  <span class="file-copy"><b>MarkShot 产品方向</b><small>RugeProjects · 正在监听</small></span>
+                  <span class="file-state">已打开</span>
+                </button>
+                <button class="file-item" type="button" data-open-document="readme">
+                  <span class="tab-icon">MD</span>
+                  <span class="file-copy"><b>README</b><small>github/markshot · 正在监听</small></span>
+                  <span class="file-state">已打开</span>
+                </button>
+              </div>
+            </section>
+
+            <section class="sidebar-section">
+              <div class="section-heading"><b>最近打开</b><span>历史记录</span></div>
+              <div class="file-list">
+                <button class="file-item" type="button" data-toast="已打开文档：周会记录 07-25.md">
+                  <span class="tab-icon">MD</span>
+                  <span class="file-copy"><b>周会记录 07-25</b><small>今天 15:42 · Documents</small></span>
+                </button>
+                <button class="file-item" type="button" data-toast="已打开文档：阅读体验笔记.md">
+                  <span class="tab-icon">MD</span>
+                  <span class="file-copy"><b>阅读体验笔记</b><small>7月22日 · Notes</small></span>
+                </button>
+              </div>
+            </section>
+          </section>
+
+        </aside>
+
+        <section class="content-scroll" id="content-scroll">
+          <section class="workbench">
+          <div class="view-area">
+            <section class="view preview-view active" data-view-panel="preview">
+              <div class="render-stage">
+                <div class="document-canvas" data-render-canvas data-profile="mobile" data-theme="light" data-background="none">
+                  <article class="document-card">
+                    <header class="document-title" data-image-title hidden>
+                      <small>MarkShot Share</small>
+                      <h1>Markdown 阅读与分享</h1>
+                    </header>
+                    <section class="article" data-article></section>
+                    <footer class="image-footer" data-image-footer>
+                      <span>MarkShot</span><span>2026/07/25</span>
+                    </footer>
+                  </article>
+                </div>
+              </div>
+            </section>
+
+            <section class="view split-view" data-view-panel="split">
+              <div class="source-pane">
+                <header class="pane-title"><b>Markdown</b><span>输入后实时更新右侧</span></header>
+                <textarea class="markdown-source" data-editor spellcheck="false"></textarea>
+              </div>
+              <div class="splitter"></div>
+              <div class="split-preview">
+                <div class="document-canvas" data-render-canvas data-profile="mobile" data-theme="light" data-background="none">
+                  <article class="document-card">
+                    <header class="document-title" data-image-title hidden>
+                      <small>MarkShot Share</small>
+                      <h1>Markdown 阅读与分享</h1>
+                    </header>
+                    <section class="article" data-article></section>
+                    <footer class="image-footer" data-image-footer>
+                      <span>MarkShot</span><span>2026/07/25</span>
+                    </footer>
+                  </article>
+                </div>
+              </div>
+            </section>
+
+            <section class="view source-view" data-view-panel="source">
+              <header class="pane-title"><b>Markdown Source</b><span>Command + S 保存 · 本原型不写入磁盘</span></header>
+              <textarea class="markdown-source" data-editor spellcheck="false"></textarea>
+            </section>
+          </div>
+          </section>
+
+          <aside class="right-panel">
+          <section class="right-content active" data-right-content="outline">
+            <div class="right-heading"><b>文档目录</b><span>当前文章</span></div>
+            <nav class="outline-list">
+              <button class="active" type="button" data-scroll-heading="0">阅读到的就是最终分享出去的</button>
+              <button type="button" data-scroll-heading="1">一、统一的文档入口</button>
+              <button type="button" data-scroll-heading="2">二、预览就是最终效果</button>
+              <button type="button" data-scroll-heading="3">三、快捷键仍然后台工作</button>
+            </nav>
+          </section>
+
+          <section class="right-content" data-right-content="style">
+            <div class="right-heading"><b>呈现风格</b><span>预览 = 分享</span></div>
+            <section class="config-group">
+              <h3>分享场景</h3>
+              <div class="choice-grid">
+                <button class="choice active" type="button" data-profile="mobile"><b>移动端</b><small>1080 px</small></button>
+                <button class="choice" type="button" data-profile="desktop"><b>PC</b><small>1440 px</small></button>
+              </div>
+            </section>
+            <section class="config-group">
+              <h3>颜色主题</h3>
+              <div class="choice-grid">
+                <button class="choice active" type="button" data-theme="light"><b>☀ 浅色</b><small>明亮纸张</small></button>
+                <button class="choice" type="button" data-theme="dark"><b>◐ 深色</b><small>暗色阅读</small></button>
+              </div>
+              <label class="switch-row">
+                <span><b>图片标题</b><small>作为当前预览的一部分</small></span>
+                <input id="title-switch" type="checkbox" />
+              </label>
+              <input class="title-input" id="title-input" value="Markdown 阅读与分享" hidden />
+              <label class="switch-row">
+                <span><b>图片页脚</b><small>显示 MarkShot 和生成时间</small></span>
+                <input id="footer-switch" type="checkbox" checked />
+              </label>
+            </section>
+            <section class="config-group">
+              <h3>背景</h3>
+              <div class="choice-grid three">
+                <button class="choice active" type="button" data-background="none"><b>无</b><small>仅内容</small></button>
+                <button class="choice" type="button" data-background="plain"><b>纯色</b><small>克制</small></button>
+                <button class="choice" type="button" data-background="soft"><b>柔和</b><small>光晕</small></button>
+              </div>
+            </section>
+          </section>
+          </aside>
+        </section>
+      </div>
+
+      <footer class="statusbar">
+        <div class="status-group">
+          <span id="status-origin"><span class="live-dot"></span>即时分享</span>
+          <span id="status-view">预览模式</span>
+          <span id="status-profile">移动端 · 1080 px</span>
+        </div>
+        <div class="status-group">
+          <span>1,146 字</span>
+          <span>UTF-8</span>
+          <span>适合窗口</span>
+        </div>
+      </footer>
+    </main>
+
+    <aside class="shortcut-popover" id="shortcut-popover" hidden>
+      <h3>全局快捷生成 · ⌘ ⌥ T</h3>
+      <p>MarkShot 窗口隐藏后仍然有效。它读取当前剪贴板，用最近风格生成图片，再把图片写回剪贴板。</p>
+      <div class="shortcut-steps">
+        <div><b>1</b>复制文字</div>
+        <div><b>2</b>按快捷键</div>
+        <div><b>3</b>后台生成</div>
+        <div><b>4</b>直接粘贴</div>
+      </div>
+      <button class="button primary" id="hidden-demo-button" type="button">模拟窗口已隐藏</button>
+      <button class="button" id="close-shortcut" type="button">关闭</button>
+    </aside>
+
+    <section class="desktop-demo" id="desktop-demo">
+      <div class="hud" id="hud">正在读取剪贴板并生成图片…</div>
+      <div class="desktop-copy">
+        <div class="mini-app"><span class="brand-mark">MS</span>MarkShot 已在后台常驻</div>
+        <h2>窗口已隐藏</h2>
+        <p>复制任意文字，然后按下全局快捷键</p>
+        <div>
+          <span class="keycap">⌘</span><span class="keycap">⌥</span><span class="keycap">T</span>
+        </div>
+        <p>也可以点击下面按钮模拟按键</p>
+        <button class="button primary" id="run-shortcut-demo" type="button">运行快捷生成</button>
+        <button class="button" id="restore-window" type="button">重新打开 MarkShot</button>
+      </div>
+    </section>
+
+    <div class="modal-backdrop" id="save-modal" hidden>
+      <section class="save-dialog" role="dialog" aria-modal="true" aria-labelledby="save-dialog-title">
+        <h2 id="save-dialog-title">保存文档</h2>
+        <p>确认文件名和保存位置。保存后，这份内容会出现在文件列表中。</p>
+        <input
+          class="save-path-input"
+          id="save-path-input"
+          type="text"
+          value="~/Documents/即时分享.md"
+          aria-label="保存位置"
+        />
+        <div class="save-dialog-actions">
+          <button class="button" id="cancel-save" type="button">取消</button>
+          <button class="button primary" id="confirm-save" type="button">保存</button>
+        </div>
+      </section>
+    </div>
+
+    <div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+    <script>
+      const documents = {
+        product: {
+          name: "MarkShot 产品方向.md",
+          path: "~/RugeProjects/Tool MarkShot/MarkShot 产品方向.md",
+          origin: "本地文件 · 正在监听",
+          temporary: false,
+          source: `# 让 Markdown 重新变得好读、好看、好分享
+
+MarkShot 是一个本地 Markdown 阅读与分享工具。它先让内容变得好读，再让当前阅读效果可以被直接分享。
+
+> 阅读、预览和分享不应该是三套互相割裂的体验。
+
+## 一、打开本地文档
+
+- 双击 Markdown 文件即可打开
+- 最近打开负责找回历史
+- 左侧文档目录负责切换当前工作集
+
+## 二、阅读后直接分享
+
+当前看到的排版会用于复制图片，不需要进入另一个工具。`,
+        },
+        clipboard: {
+          name: "即时分享",
+          path: "来源：系统剪贴板 · 未写入文件",
+          origin: "临时内容 · 尚未写入磁盘",
+          temporary: true,
+          source: `# 阅读到的，就是最终分享出去的
+
+MarkShot 不再把“阅读”和“截图”分成两个互不相关的模式。打开文件或粘贴内容后，中间展示的是一份可以选中文字的真实文档。
+
+> 预览不是图片。只有点击复制或导出时，当前排版才会转换成图片。
+
+## 一、统一的文档入口
+
+本地 Markdown 会加入左侧文档目录。直接粘贴的内容进入固定的 **即时分享** 输入区。
+
+- 快捷键可以反复更新收件箱
+- 编辑内容并点击“保存文档”后，它加入普通文档列表
+- 收件箱入口始终固定在目录最上方
+
+## 二、预览就是最终效果
+
+右侧选择移动端、PC、浅色、深色或背景后，中间排版立即改变。复制图片使用完全相同的宽度、换行和主题 CSS。
+
+\`\`\`text
+Markdown → 同一份 RenderSpec → 可选择预览 / 最终图片
+\`\`\`
+
+## 三、快捷键仍然后台工作
+
+窗口隐藏后，复制文字并按下 \`Command + Option + T\`。MarkShot 在后台使用最近保存的样式生成图片，并覆盖到剪贴板，随后可以直接粘贴。`,
+        },
+        readme: {
+          name: "README.md",
+          path: "~/RugeProjects/Tool MarkShot/Source MarkShot/README.md",
+          origin: "本地文件 · 正在监听",
+          temporary: false,
+          source: `# MarkShot
+
+MarkShot 是一款常驻 macOS 的 Markdown 阅读与分享工具。
+
+## 当前能力
+
+- 打开和阅读 Markdown
+- 可收起的文档目录与最近打开
+- 可选择的真实 HTML 预览
+- 移动端与 PC 长图分享
+- 全局快捷键后台生成图片
+
+## 设计原则
+
+阅读到的内容，就是最终可以分享出去的内容。`,
+        },
+      };
+
+      const articleHtml = {
+        clipboard: `
+          <h1>阅读到的，就是最终分享出去的</h1>
+          <p>MarkShot 不再把“阅读”和“截图”分成两个互不相关的模式。打开文件或粘贴内容后，中间展示的是一份可以选中文字的真实文档。</p>
+          <blockquote>预览不是图片。只有点击复制或导出时，当前排版才会转换成图片。</blockquote>
+          <h2>一、统一的文档入口</h2>
+          <p>本地 Markdown 会加入左侧文档目录。直接粘贴的内容进入固定的 <strong>即时分享</strong> 输入区。</p>
+          <ul><li>快捷键可以反复更新收件箱</li><li>编辑内容并点击“保存文档”后，它加入普通文档列表</li><li>收件箱入口始终固定在目录最上方</li></ul>
+          <h2>二、预览就是最终效果</h2>
+          <p>右侧选择移动端、PC、浅色、深色或背景后，中间排版立即改变。复制图片使用完全相同的宽度、换行和主题 CSS。</p>
+          <pre>Markdown → 同一份 RenderSpec → 可选择预览 / 最终图片</pre>
+          <h2>三、快捷键仍然后台工作</h2>
+          <p>窗口隐藏后，复制文字并按下 <code>Command + Option + T</code>。MarkShot 在后台使用最近保存的样式生成图片，并覆盖到剪贴板，随后可以直接粘贴。</p>`,
+        product: `
+          <h1>让 Markdown 重新变得好读、好看、好分享</h1>
+          <p>MarkShot 是一个本地 Markdown 阅读与分享工具。它先让内容变得好读，再让当前阅读效果可以被直接分享。</p>
+          <blockquote>阅读、预览和分享不应该是三套互相割裂的体验。</blockquote>
+          <h2>一、打开本地文档</h2>
+          <ul><li>双击 Markdown 文件即可打开</li><li>最近打开负责找回历史</li><li>左侧文档目录负责切换当前工作集</li></ul>
+          <h2>二、阅读后直接分享</h2>
+          <p>当前看到的排版会用于复制图片，不需要进入另一个工具。</p>`,
+        readme: `
+          <h1>MarkShot</h1>
+          <p>MarkShot 是一款常驻 macOS 的 Markdown 阅读与分享工具。</p>
+          <h2>当前能力</h2>
+          <ul><li>打开和阅读 Markdown</li><li>文档目录与最近打开</li><li>可选择的真实 HTML 预览</li><li>移动端与 PC 长图分享</li><li>全局快捷键后台生成图片</li></ul>
+          <h2>设计原则</h2>
+          <p>阅读到的内容，就是最终可以分享出去的内容。</p>`,
+      };
+
+      const clipboardTemplateSource = documents.clipboard.source;
+      const app = document.getElementById("app");
+      const openedList = document.getElementById("opened-list");
+      const toast = document.getElementById("toast");
+      const shortcutPopover = document.getElementById("shortcut-popover");
+      const desktopDemo = document.getElementById("desktop-demo");
+      const hud = document.getElementById("hud");
+      const stylePanelButton = document.getElementById("toggle-style-panel");
+      const sidebarButton = document.getElementById("toggle-sidebar");
+      const sidebarDraftEditor = document.getElementById("sidebar-draft-editor");
+      const contentScroll = document.getElementById("content-scroll");
+      const shareMenuToggle = document.getElementById("share-menu-toggle");
+      const shareMenu = document.getElementById("share-menu");
+      const outlineList = document.querySelector('[data-right-content="outline"] .outline-list');
+      const editors = [...document.querySelectorAll("[data-editor]")];
+      const saveModal = document.getElementById("save-modal");
+      const savePathInput = document.getElementById("save-path-input");
+      let activeDocument = "clipboard";
+      let currentView = "preview";
+      let toastTimer;
+      let hudTimer;
+      let pasteSequence = 1;
+
+      function showToast(message) {
+        clearTimeout(toastTimer);
+        toast.textContent = message;
+        toast.classList.add("visible");
+        toastTimer = setTimeout(() => toast.classList.remove("visible"), 1700);
+      }
+
+      function activeData() {
+        return documents[activeDocument];
+      }
+
+      function syncArticle() {
+        document.querySelectorAll("[data-article]").forEach((article) => {
+          article.innerHTML = articleHtml[activeDocument] || articleHtml.clipboard;
+        });
+        const headings = [
+          ...document.querySelectorAll(
+            '[data-view-panel="preview"] .article h1, [data-view-panel="preview"] .article h2, [data-view-panel="preview"] .article h3',
+          ),
+        ];
+        outlineList.replaceChildren(
+          ...headings.map((heading, index) => {
+            const button = document.createElement("button");
+            button.type = "button";
+            button.dataset.scrollHeading = String(index);
+            button.textContent = heading.textContent;
+            button.classList.toggle("active", index === 0);
+            button.classList.toggle("level-1", heading.tagName === "H2");
+            button.classList.toggle("level-2", heading.tagName === "H3");
+            return button;
+          }),
+        );
+      }
+
+      function syncEditors() {
+        editors.forEach((editor) => {
+          editor.value = activeData().source;
+        });
+        sidebarDraftEditor.value = documents.clipboard?.source || "";
+      }
+
+      function setSidebarMode(mode) {
+        document.querySelectorAll("[data-sidebar-mode]").forEach((button) => {
+          button.classList.toggle("active", button.dataset.sidebarMode === mode);
+        });
+        document.querySelectorAll("[data-sidebar-panel]").forEach((panel) => {
+          panel.classList.toggle("active", panel.dataset.sidebarPanel === mode);
+        });
+      }
+
+      function activateDocument(documentId) {
+        if (!documents[documentId]) return;
+        activeDocument = documentId;
+        const data = activeData();
+        document.getElementById("document-toolbar-title").textContent = data.name;
+        document.getElementById("document-toolbar-path").textContent = data.temporary
+          ? "暂存于内存 · 尚未保存为文件"
+          : data.path;
+        document.getElementById("keep-draft").hidden = !data.temporary;
+        document.getElementById("status-origin").innerHTML = data.temporary
+          ? '<span class="live-dot"></span>即时分享'
+          : data.preserved
+            ? '<span class="dirty-dot"></span>未保存文档'
+            : '<span class="live-dot"></span>文件监听中';
+        document.querySelectorAll("[data-open-document]").forEach((item) => {
+          item.classList.toggle("active", item.dataset.openDocument === documentId);
+        });
+        setSidebarMode(documentId === "clipboard" ? "draft" : "files");
+        syncArticle();
+        syncEditors();
+      }
+
+      function setView(view) {
+        currentView = view;
+        document.querySelectorAll("[data-view]").forEach((button) => {
+          button.classList.toggle("active", button.dataset.view === view);
+        });
+        document.querySelectorAll("[data-view-panel]").forEach((panel) => {
+          panel.classList.toggle("active", panel.dataset.viewPanel === view);
+        });
+        document.getElementById("status-view").textContent = {
+          preview: "预览模式",
+          split: "双栏模式",
+          source: "源码模式",
+        }[view];
+      }
+
+      function setRightPanel(panel) {
+        const showStyle = panel === "style";
+        app.classList.toggle("style-open", showStyle);
+        stylePanelButton.classList.toggle("active", showStyle);
+        document.querySelectorAll("[data-right-content]").forEach((content) => {
+          content.classList.toggle(
+            "active",
+            content.dataset.rightContent === (showStyle ? "style" : "outline"),
+          );
+        });
+      }
+
+      function choose(selector, value, attribute) {
+        document.querySelectorAll(selector).forEach((button) => {
+          button.classList.toggle("active", button.dataset[attribute] === value);
+        });
+      }
+
+      function updateCanvases(attribute, value) {
+        document.querySelectorAll("[data-render-canvas]").forEach((canvas) => {
+          canvas.dataset[attribute] = value;
+        });
+      }
+
+      function pasteIntoDraft(fromShortcut = false) {
+        let draft = documents.clipboard;
+        if (!draft || !draft.temporary) {
+          pasteSequence += 1;
+          draft = {
+            name: "即时分享",
+            path: "来源：系统剪贴板 · 未写入文件",
+            origin: "临时内容 · 尚未写入磁盘",
+            temporary: true,
+            source: clipboardTemplateSource,
+          };
+          documents.clipboard = draft;
+        }
+        if (fromShortcut) {
+          draft.source = documents.clipboard.source.replace(
+            "阅读到的，就是最终分享出去的",
+            `快捷剪贴板内容 ${new Date().toLocaleTimeString("zh-CN", { hour: "2-digit", minute: "2-digit" })}`,
+          );
+        } else {
+          draft.source = clipboardTemplateSource;
+        }
+        activateDocument("clipboard");
+        if (!fromShortcut) {
+          setView("preview");
+          showToast("已更新即时分享内容");
+        }
+      }
+
+      function preserveDraft(auto = false, savePath = "") {
+        const data = activeData();
+        if (!data.temporary) return;
+        const draftId = activeDocument;
+        const preservedId = `clipboard-kept-${Date.now()}`;
+        const stamp = new Date().toLocaleTimeString("zh-CN", {
+          hour: "2-digit",
+          minute: "2-digit",
+        });
+        data.temporary = false;
+        data.preserved = !savePath;
+        data.name = `剪贴板 ${stamp}`;
+        data.path = savePath || "临时文档 · 可另存为 Markdown";
+        documents[preservedId] = data;
+        delete documents[draftId];
+        articleHtml[preservedId] = articleHtml.clipboard;
+        activeDocument = preservedId;
+        const preservedItem = document.createElement("button");
+        preservedItem.className = "file-item";
+        preservedItem.type = "button";
+        preservedItem.dataset.openDocument = preservedId;
+        preservedItem.innerHTML = `<span class="tab-icon">MD</span><span class="file-copy"><b>${data.name}</b><small>${savePath || "临时文档 · 可另存为"}</small></span><span class="file-state">${savePath ? "已保存" : "已保留"}</span>`;
+        preservedItem.addEventListener("click", () => activateDocument(preservedId));
+        openedList.prepend(preservedItem);
+        activateDocument(preservedId);
+        showToast(
+          auto
+            ? "内容已修改，已自动保留到文档列表"
+            : savePath
+              ? "文档已保存并加入文件列表"
+              : "剪贴板内容已保留到文档列表",
+        );
+      }
+
+      function runShortcutDemo() {
+        clearTimeout(hudTimer);
+        hud.textContent = "正在读取剪贴板并生成图片…";
+        hud.classList.add("visible");
+        hudTimer = setTimeout(() => {
+          pasteIntoDraft(true);
+          hud.textContent = "图片已复制，可直接 Command + V";
+          setTimeout(() => hud.classList.remove("visible"), 1800);
+        }, 800);
+      }
+
+      document.querySelectorAll("[data-view]").forEach((button) => {
+        button.addEventListener("click", () => setView(button.dataset.view));
+      });
+
+      stylePanelButton.addEventListener("click", () => {
+        const active = stylePanelButton.classList.contains("active");
+        setRightPanel(active ? null : "style");
+      });
+
+      sidebarButton.addEventListener("click", () => {
+        const collapsed = app.classList.toggle("sidebar-collapsed");
+        sidebarButton.title = collapsed ? "展开内容侧栏" : "收起内容侧栏";
+      });
+
+      document.querySelectorAll("[data-sidebar-mode]").forEach((button) => {
+        button.addEventListener("click", () => {
+          const mode = button.dataset.sidebarMode;
+          setSidebarMode(mode);
+          if (mode === "draft" && documents.clipboard) {
+            activateDocument("clipboard");
+          }
+        });
+      });
+
+      document.querySelectorAll("[data-open-document]").forEach((item) => {
+        item.addEventListener("click", () => {
+          if (item.dataset.openDocument === "clipboard" && !documents.clipboard) {
+            pasteIntoDraft(false);
+            return;
+          }
+          activateDocument(item.dataset.openDocument);
+        });
+      });
+
+      document.querySelectorAll("[data-profile]").forEach((button) => {
+        button.addEventListener("click", () => {
+          choose("[data-profile]", button.dataset.profile, "profile");
+          updateCanvases("profile", button.dataset.profile);
+          document.getElementById("status-profile").textContent =
+            button.dataset.profile === "desktop" ? "PC · 1440 px" : "移动端 · 1080 px";
+        });
+      });
+
+      document.querySelectorAll("[data-theme]").forEach((button) => {
+        button.addEventListener("click", () => {
+          choose("[data-theme]", button.dataset.theme, "theme");
+          updateCanvases("theme", button.dataset.theme);
+        });
+      });
+
+      document.querySelectorAll("[data-background]").forEach((button) => {
+        button.addEventListener("click", () => {
+          choose("[data-background]", button.dataset.background, "background");
+          updateCanvases("background", button.dataset.background);
+        });
+      });
+
+      document.getElementById("title-switch").addEventListener("change", (event) => {
+        document.getElementById("title-input").hidden = !event.target.checked;
+        document.querySelectorAll("[data-image-title]").forEach((title) => {
+          title.hidden = !event.target.checked;
+        });
+      });
+
+      document.getElementById("title-input").addEventListener("input", (event) => {
+        document.querySelectorAll("[data-image-title] h1").forEach((title) => {
+          title.textContent = event.target.value || "未命名分享";
+        });
+      });
+
+      document.getElementById("footer-switch").addEventListener("change", (event) => {
+        document.querySelectorAll("[data-image-footer]").forEach((footer) => {
+          footer.hidden = !event.target.checked;
+        });
+      });
+
+      editors.forEach((editor) => {
+        editor.addEventListener("input", (event) => {
+          const data = activeData();
+          data.source = event.target.value;
+          editors.forEach((other) => {
+            if (other !== event.target) other.value = event.target.value;
+          });
+          if (data.temporary) sidebarDraftEditor.value = event.target.value;
+          document.getElementById("document-toolbar-path").textContent =
+            "有未保存修改 · 当前保留在内存";
+        });
+      });
+
+      sidebarDraftEditor.addEventListener("input", (event) => {
+        if (!documents.clipboard) {
+          documents.clipboard = {
+            name: "即时分享",
+            path: "来源：即时分享 · 未写入文件",
+            origin: "临时内容 · 尚未写入磁盘",
+            temporary: true,
+            source: "",
+          };
+        }
+        documents.clipboard.source = event.target.value;
+        if (activeDocument !== "clipboard") {
+          activateDocument("clipboard");
+          sidebarDraftEditor.focus();
+          sidebarDraftEditor.setSelectionRange(
+            sidebarDraftEditor.value.length,
+            sidebarDraftEditor.value.length,
+          );
+        }
+        editors.forEach((editor) => {
+          editor.value = event.target.value;
+        });
+        document.getElementById("document-toolbar-title").textContent = "即时分享";
+        document.getElementById("document-toolbar-path").textContent =
+          "有未保留修改 · 暂存于内存";
+      });
+
+      document.querySelectorAll(".copy-image").forEach((button) => {
+        button.addEventListener("click", () => {
+          showToast("当前可选择预览已按相同排版复制为图片");
+        });
+      });
+
+      document.querySelectorAll(".export-image").forEach((button) => {
+        button.addEventListener("click", () => {
+          shareMenu.hidden = true;
+          showToast("已打开图片导出位置选择（原型）");
+        });
+      });
+
+      shareMenuToggle.addEventListener("click", (event) => {
+        event.stopPropagation();
+        shareMenu.hidden = !shareMenu.hidden;
+      });
+
+      document.addEventListener("click", (event) => {
+        if (!event.target.closest(".share-split")) shareMenu.hidden = true;
+      });
+
+      document.querySelectorAll("[data-toast]").forEach((button) => {
+        button.addEventListener("click", () => showToast(button.dataset.toast));
+      });
+
+      document.getElementById("keep-draft").addEventListener("click", () => {
+        saveModal.hidden = false;
+        savePathInput.focus();
+        savePathInput.select();
+      });
+      document.getElementById("cancel-save").addEventListener("click", () => {
+        saveModal.hidden = true;
+      });
+      document.getElementById("confirm-save").addEventListener("click", () => {
+        const savePath = savePathInput.value.trim() || "~/Documents/即时分享.md";
+        saveModal.hidden = true;
+        preserveDraft(false, savePath);
+      });
+      saveModal.addEventListener("click", (event) => {
+        if (event.target === saveModal) saveModal.hidden = true;
+      });
+      document.getElementById("clear-draft").addEventListener("click", () => {
+        if (documents.clipboard) documents.clipboard.source = "";
+        sidebarDraftEditor.value = "";
+        if (activeDocument === "clipboard") {
+          editors.forEach((editor) => {
+            editor.value = "";
+          });
+        }
+        showToast("即时分享内容已清除");
+      });
+      document.getElementById("sidebar-paste").addEventListener("click", () => pasteIntoDraft(false));
+      document.getElementById("shortcut-chip").addEventListener("click", () => {
+        shortcutPopover.hidden = !shortcutPopover.hidden;
+      });
+      document.getElementById("close-shortcut").addEventListener("click", () => {
+        shortcutPopover.hidden = true;
+      });
+      document.getElementById("hidden-demo-button").addEventListener("click", () => {
+        shortcutPopover.hidden = true;
+        desktopDemo.classList.add("active");
+      });
+      document.getElementById("restore-window").addEventListener("click", () => {
+        desktopDemo.classList.remove("active");
+        activateDocument("clipboard");
+        showToast("已重新打开 MarkShot，最近快捷内容位于即时分享");
+      });
+      document.getElementById("run-shortcut-demo").addEventListener("click", runShortcutDemo);
+
+      outlineList.addEventListener("click", (event) => {
+        const button = event.target.closest("[data-scroll-heading]");
+        if (!button) return;
+          const headings = document.querySelectorAll(
+            '[data-view-panel="preview"] .article h1, [data-view-panel="preview"] .article h2, [data-view-panel="preview"] .article h3',
+          );
+          const heading = headings[Number(button.dataset.scrollHeading)];
+          heading?.scrollIntoView({ behavior: "smooth", block: "start" });
+          document.querySelectorAll("[data-scroll-heading]").forEach((item) => item.classList.remove("active"));
+          button.classList.add("active");
+      });
+
+      let outlineScrollFrame = 0;
+      contentScroll.addEventListener("scroll", () => {
+        cancelAnimationFrame(outlineScrollFrame);
+        outlineScrollFrame = requestAnimationFrame(() => {
+          if (currentView !== "preview") return;
+          const headings = [
+            ...document.querySelectorAll(
+              '[data-view-panel="preview"] .article h1, [data-view-panel="preview"] .article h2, [data-view-panel="preview"] .article h3',
+            ),
+          ];
+          const marker = contentScroll.getBoundingClientRect().top + 96;
+          let activeIndex = 0;
+          headings.forEach((heading, index) => {
+            if (heading.getBoundingClientRect().top <= marker) activeIndex = index;
+          });
+          outlineList.querySelectorAll("[data-scroll-heading]").forEach((item) => {
+            item.classList.toggle(
+              "active",
+              Number(item.dataset.scrollHeading) === activeIndex,
+            );
+          });
+        });
+      });
+
+      window.addEventListener("keydown", (event) => {
+        if (event.metaKey && event.altKey && event.key.toLowerCase() === "t") {
+          event.preventDefault();
+          if (!desktopDemo.classList.contains("active")) {
+            desktopDemo.classList.add("active");
+          }
+          runShortcutDemo();
+        }
+      });
+
+      activateDocument("clipboard");
+      setView("preview");
+      setRightPanel("outline");
+      setSidebarMode("draft");
+    </script>
+  </body>
+</html>
