@@ -40,5 +40,4 @@ contextBridge.exposeInMainWorld("replyImage", {
   onSettingsChanged: (callback) => subscribe("settings:changed", callback),
   onDocumentsOpened: (callback) => subscribe("documents:opened", callback),
   onDocumentChanged: (callback) => subscribe("documents:changed", callback),
-  onOpenRequested: (callback) => subscribe("documents:open-requested", callback),
 });
