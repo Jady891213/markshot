@@ -19,6 +19,7 @@ import {
   pageLayout,
   suggestedFileName,
 } from "./rendering.mjs";
+import { DocumentLibrary, isMarkdownPath } from "./documents.mjs";
 import {
   DEFAULT_SETTINGS,
   loadSettings,
@@ -40,9 +41,31 @@ let quickGenerationRunning = false;
 let registeredAccelerator = "";
 let settings = { ...DEFAULT_SETTINGS };
 let settingsPath = "";
+let documentLibrary;
+let recentDocumentsPath = "";
 let renderQueue = Promise.resolve();
 let loadedRenderRevision = "";
 const renderRecords = new Map();
+const pendingOpenPaths = [];
+let instantDocument = {
+  id: "instant",
+  kind: "instant",
+  name: "即时分享",
+  source: "",
+  sourceFormat: "markdown",
+  html: "",
+  status: "ready",
+};
+
+app.on("open-file", (event, filePath) => {
+  event.preventDefault();
+  if (!isMarkdownPath(filePath)) return;
+  if (!documentLibrary) {
+    pendingOpenPaths.push(filePath);
+    return;
+  }
+  openDocumentPaths([filePath], { showWindow: true }).catch(console.error);
+});
 
 const gotSingleInstanceLock = app.requestSingleInstanceLock();
 if (!gotSingleInstanceLock) {
@@ -215,31 +238,13 @@ async function captureRecord(record) {
   });
 }
 
-async function previewImagesForRecord(record) {
-  const images = await captureRecord(record);
-  return images.map((image) => {
-    const size = image.getSize();
-    const width = Math.min(size.width, 720);
-    const height = Math.max(1, Math.round((size.height * width) / size.width));
-    const preview =
-      width === size.width
-        ? image
-        : image.resize({ width, height, quality: "best" });
-    return {
-      dataUrl: preview.toDataURL(),
-      width: size.width,
-      height: size.height,
-    };
-  });
-}
-
-function publicRecord(record, previewImages) {
+function publicRecord(record) {
   return {
     revision: record.revision,
     options: record.options,
     totalHeight: record.totalHeight,
     pages: record.pages,
-    previewImages,
+    previewHtml: record.html,
   };
 }
 
@@ -267,6 +272,110 @@ function sourceFromClipboard(payload) {
   return payload.format === "html" && payload.html
     ? payload.html
     : payload.text;
+}
+
+function documentLibrarySnapshot() {
+  const library = documentLibrary?.snapshot() || {
+    opened: [],
+    recent: [],
+  };
+  return {
+    instant: { ...instantDocument },
+    ...library,
+  };
+}
+
+function sendToMainWindow(channel, payload) {
+  if (!mainWindow || mainWindow.isDestroyed()) return;
+  mainWindow.webContents.send(channel, payload);
+}
+
+function markdownPathsFromArguments(argv = []) {
+  return argv.filter(
+    (argument) => path.isAbsolute(argument) && isMarkdownPath(argument),
+  );
+}
+
+async function openDocumentPaths(
+  filePaths,
+  { showWindow = false, notify = true } = {},
+) {
+  if (!documentLibrary) {
+    pendingOpenPaths.push(...filePaths.filter(isMarkdownPath));
+    return { documents: [], errors: [] };
+  }
+  const result = await documentLibrary.openPaths(filePaths);
+  if (showWindow) showMainWindow();
+  if (notify && (result.documents.length || result.errors.length)) {
+    sendToMainWindow("documents:opened", {
+      ...result,
+      library: documentLibrarySnapshot(),
+    });
+  }
+  return result;
+}
+
+async function openMarkdownDialog() {
+  const result = await dialog.showOpenDialog(mainWindow, {
+    title: "打开 Markdown",
+    filters: [
+      {
+        name: "Markdown 文档",
+        extensions: ["md", "markdown", "mdown"],
+      },
+    ],
+    properties: ["openFile", "multiSelections"],
+  });
+  if (result.canceled) return { canceled: true, documents: [], errors: [] };
+  const opened = await openDocumentPaths(result.filePaths, {
+    showWindow: true,
+  });
+  return { canceled: false, ...opened };
+}
+
+async function saveInstantDocument({ source, suggestedName } = {}) {
+  const markdownSource = String(source || "");
+  if (!markdownSource.trim()) throw new Error("即时内容为空，无法保存");
+  const safeName = String(suggestedName || "即时分享.md")
+    .replace(/[\\/:*?"<>|]/g, " ")
+    .trim();
+  const defaultName = /\.m(?:d|arkdown|down)$/i.test(safeName)
+    ? safeName
+    : `${safeName || "即时分享"}.md`;
+  const result = await dialog.showSaveDialog(mainWindow, {
+    title: "保存 Markdown",
+    defaultPath: defaultName,
+    filters: [
+      {
+        name: "Markdown 文档",
+        extensions: ["md"],
+      },
+    ],
+    properties: ["createDirectory", "showOverwriteConfirmation"],
+  });
+  if (result.canceled || !result.filePath) return { canceled: true };
+
+  await fs.writeFile(result.filePath, markdownSource, "utf8");
+  const opened = await openDocumentPaths([result.filePath], {
+    showWindow: true,
+  });
+  instantDocument = {
+    ...instantDocument,
+    source: "",
+    sourceFormat: "markdown",
+    html: "",
+  };
+  sendToMainWindow("documents:changed", {
+    type: "instant-cleared",
+    document: { ...instantDocument },
+    library: documentLibrarySnapshot(),
+  });
+  return {
+    canceled: false,
+    path: result.filePath,
+    document: opened.documents[0],
+    library: documentLibrarySnapshot(),
+  };
 }
 
 function showMainWindow() {
@@ -377,6 +486,18 @@ async function quickGenerate() {
     return { status: "empty", pageCount: 0 };
   }
 
+  instantDocument = {
+    ...instantDocument,
+    source: payload.text || source,
+    sourceFormat: payload.format,
+    html: payload.format === "html" ? payload.html : "",
+  };
+  sendToMainWindow("documents:changed", {
+    type: "instant-updated",
+    document: { ...instantDocument },
+    library: documentLibrarySnapshot(),
+  });
+
   quickGenerationRunning = true;
   showHud("正在生成长图…", "info", 5000);
   try {
@@ -389,8 +510,8 @@ async function quickGenerate() {
     if (record.pages.length > 1) {
       showMainWindow();
       mainWindow.webContents.send("quick:load", {
-        source: payload.text || source,
-        sourceFormat: payload.format === "html" ? "html" : "markdown",
+        source: instantDocument.source,
+        sourceFormat: instantDocument.sourceFormat,
         html: payload.html,
         message: `内容已拆成 ${record.pages.length} 页，请选择需要复制的页面`,
       });
@@ -533,6 +654,58 @@ function createDockMenu() {
   );
 }
 
+function createApplicationMenu() {
+  Menu.setApplicationMenu(
+    Menu.buildFromTemplate([
+      {
+        label: "MarkShot",
+        submenu: [
+          { role: "about" },
+          { type: "separator" },
+          { role: "hide" },
+          { role: "hideOthers" },
+          { role: "unhide" },
+          { type: "separator" },
+          { role: "quit" },
+        ],
+      },
+      {
+        label: "文件",
+        submenu: [
+          {
+            label: "打开 Markdown…",
+            accelerator: "Command+O",
+            click: () => openMarkdownDialog().catch(console.error),
+          },
+          { type: "separator" },
+          { role: "close" },
+        ],
+      },
+      {
+        label: "编辑",
+        submenu: [
+          { role: "undo" },
+          { role: "redo" },
+          { type: "separator" },
+          { role: "cut" },
+          { role: "copy" },
+          { role: "paste" },
+          { role: "selectAll" },
+        ],
+      },
+      {
+        label: "窗口",
+        submenu: [
+          { role: "minimize" },
+          { role: "zoom" },
+          { type: "separator" },
+          { role: "front" },
+        ],
+      },
+    ]),
+  );
+}
+
 function createMainWindow() {
   mainWindow = new BrowserWindow({
     width: 1380,
@@ -578,8 +751,7 @@ function registerIpc() {
 
   ipcMain.handle("preview:render", async (_event, request) => {
     const record = await renderPreview(request);
-    const previewImages = await previewImagesForRecord(record);
-    return publicRecord(record, previewImages);
+    return publicRecord(record);
   });
 
   ipcMain.handle("page:copy", async (_event, { revision, pageIndex }) => {
@@ -634,12 +806,64 @@ function registerIpc() {
       accelerator,
     }),
   );
+  ipcMain.handle("documents:get", () => documentLibrarySnapshot());
+  ipcMain.handle("documents:open", () => openMarkdownDialog());
+  ipcMain.handle("documents:open-recent", async (_event, filePath) => {
+    const result = await openDocumentPaths([filePath], {
+      showWindow: true,
+    });
+    return {
+      ...result,
+      library: documentLibrarySnapshot(),
+    };
+  });
+  ipcMain.handle("documents:open-paths", async (_event, filePaths) => {
+    const result = await openDocumentPaths(filePaths, {
+      showWindow: true,
+    });
+    return {
+      ...result,
+      library: documentLibrarySnapshot(),
+    };
+  });
+  ipcMain.handle("documents:save-instant", (_event, request) =>
+    saveInstantDocument(request),
+  );
+  ipcMain.handle("documents:update-instant", (_event, next) => {
+    instantDocument = {
+      ...instantDocument,
+      source: String(next?.source || ""),
+      sourceFormat:
+        next?.sourceFormat === "html"
+          ? "html"
+          : next?.sourceFormat === "plain"
+            ? "plain"
+            : "markdown",
+      html: next?.sourceFormat === "html" ? String(next?.html || "") : "",
+    };
+    return { ...instantDocument };
+  });
+  ipcMain.handle("documents:close", (_event, documentId) => {
+    documentLibrary?.closeDocument(documentId);
+    return documentLibrarySnapshot();
+  });
+  ipcMain.handle("documents:remove-recent", async (_event, filePath) => {
+    await documentLibrary?.removeRecent(filePath);
+    return documentLibrarySnapshot();
+  });
   ipcMain.on("window:hide", hideMainWindow);
   ipcMain.on("app:quit", () => app.quit());
 }
 
 if (gotSingleInstanceLock) {
-  app.on("second-instance", showMainWindow);
+  app.on("second-instance", (_event, argv) => {
+    const filePaths = markdownPathsFromArguments(argv);
+    if (filePaths.length) {
+      openDocumentPaths(filePaths, { showWindow: true }).catch(console.error);
+    } else {
+      showMainWindow();
+    }
+  });
   app.on("activate", showMainWindow);
   app.on("window-all-closed", () => {
     // Keep the tray process alive until the user explicitly quits.
@@ -649,16 +873,40 @@ if (gotSingleInstanceLock) {
   });
   app.on("will-quit", () => {
     globalShortcut.unregisterAll();
+    documentLibrary?.dispose();
     clearTimeout(hudTimer);
   });
 
   app.whenReady().then(async () => {
     app.setActivationPolicy("regular");
     settingsPath = path.join(app.getPath("userData"), "settings.json");
+    recentDocumentsPath = path.join(
+      app.getPath("userData"),
+      "recent-documents.json",
+    );
     settings = await loadSettings(settingsPath);
+    documentLibrary = new DocumentLibrary({
+      recentPath: recentDocumentsPath,
+      onEvent: (payload) => {
+        sendToMainWindow("documents:changed", {
+          ...payload,
+          library: documentLibrarySnapshot(),
+        });
+      },
+    });
+    await documentLibrary.initialize();
+    pendingOpenPaths.push(...markdownPathsFromArguments(process.argv.slice(1)));
+    if (pendingOpenPaths.length) {
+      const queuedPaths = [...new Set(pendingOpenPaths)];
+      pendingOpenPaths.length = 0;
+      await openDocumentPaths(queuedPaths, {
+        notify: false,
+      });
+    }
     registerIpc();
     createTray();
     createDockMenu();
+    createApplicationMenu();
     createMainWindow();
     if (settings.shortcutEnabled) {
       const result = await registerAccelerator(settings.accelerator);
