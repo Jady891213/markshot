@@ -1,8 +1,10 @@
 import fs from "node:fs/promises";
 import path from "node:path";
+import { DEFAULT_LANGUAGE, normalizeLanguage } from "./i18n.mjs";
 import { normalizeRenderOptions } from "./rendering.mjs";
 
 export const DEFAULT_SETTINGS = Object.freeze({
+  language: DEFAULT_LANGUAGE,
   profile: "mobile",
   theme: "light",
   background: "plain",
@@ -28,6 +30,7 @@ export function normalizeSettings(input = {}) {
 
   return {
     ...render,
+    language: normalizeLanguage(input.language),
     shortcutEnabled:
       typeof input.shortcutEnabled === "boolean"
         ? input.shortcutEnabled

@@ -41,6 +41,9 @@
 - The background choices are None, Plain, and Soft. None removes canvas padding plus card background decoration so the output is only the themed Markdown content surface.
 - Show the current global shortcut in the app title bar immediately left of a settings icon. Configure it in an in-app modal opened by that icon; do not expose a separate Hide Window button.
 - Keep `contextIsolation: true`, `nodeIntegration: false`, and expose only the narrow preload API.
+- Keep all MarkShot-owned user-facing copy in the shared `src/i18n.mjs` layer. Supported interface languages are `zh-CN` and `en`, with Simplified Chinese as the default and fallback for legacy or invalid settings.
+- Language changes must apply immediately without reloading the renderer or resetting the active document, view, scroll position, or heading. Rebuild Tray, Dock, and application menus after a language change, and include language in render revisions so preview HTML, footer dates, and `lang` attributes cannot reuse stale output.
+- Never translate user Markdown, filenames, paths, shortcut tokens, or system-owned macOS dialog controls. English layout adjustments may widen or reflow containers, but must not reduce the established interface font sizes.
 - The default quick action is `Command+Option+T` with the mobile profile.
 - Expose only two fixed output profiles: mobile at 1080 px with 32 px body text and 40 px canvas padding, and desktop at 1600 px with 32 output pixels (equivalent to a conventional 16 px reader at 2x) and 48 px canvas padding. Show desktop at a fixed 0.5 preview scale, producing an A4-like 800 px reading surface; larger windows add side whitespace instead of enlarging the document. Only shrink further when the available viewport is narrower than 800 px. Treat desktop as a wide reading layout instead of a stretched mobile card. Width, font size, and padding are profile-owned and are not user-editable.
 - Use a neutral light-gray fenced-code container in the light theme and a medium charcoal container in the dark theme. Avoid near-black code blocks unless a future named theme explicitly requires them.
@@ -78,5 +81,6 @@ After validation, replace the sibling `MarkShot.app` and remove the Forge `out/`
 - Verify Immediate and Reading restore their own active document, view, scroll position, and heading; Preview, Split, and Source must remain read-only.
 - Verify mobile 1080 px and desktop 1600 px; desktop preview stays at 800 px and does not grow with the window, while legacy or custom profile inputs normalize to mobile.
 - Verify the global shortcut while another app has focus, successful clipboard image paste, multi-page fallback, shortcut conflict handling, and no disk output.
+- Verify both languages at the minimum, default, and maximized window sizes. English toolbar controls, mode/view switches, page selector, style cards, settings dialog, native menus, and HUD must not wrap, overlap, or clip; restart once in each language to verify persistence.
 - On every manual or automated Electron run, quit the app and verify that no Electron Helper process remains. If the user expects the resident process to be ready after handoff, relaunch the verified final `.app` intentionally and report that it was left running.
 - Mark disposable files with `TMP to delete` and remove them before handoff.

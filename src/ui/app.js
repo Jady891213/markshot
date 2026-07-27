@@ -1,9 +1,13 @@
-const api = window.replyImage;
+import {
+  formatItemCount,
+  formatOpenErrorCount,
+  formatPageCount,
+  formatPageOption,
+  normalizeLanguage,
+  translate,
+} from "../i18n.mjs";
 
-const PROFILE_LABELS = {
-  mobile: "移动端",
-  desktop: "PC",
-};
+const api = window.replyImage;
 
 const elements = {
   app: document.getElementById("app"),
@@ -30,6 +34,7 @@ const elements = {
   profile: document.querySelectorAll('input[name="profile"]'),
   theme: document.querySelectorAll('input[name="theme"]'),
   background: document.querySelectorAll('input[name="background"]'),
+  language: document.querySelectorAll('input[name="language"]'),
   titleEnabled: document.getElementById("title-enabled"),
   imageTitle: document.getElementById("image-title"),
   showFooter: document.getElementById("show-footer"),
@@ -75,6 +80,15 @@ let renderSequence = 0;
 let dragDepth = 0;
 let outlineTargets = [];
 let pendingScrollRestore = 0;
+let instantSyntheticSource = false;
+
+function currentLanguage() {
+  return normalizeLanguage(settings?.language);
+}
+
+function t(key, values = {}) {
+  return translate(currentLanguage(), key, values);
+}
 
 function selectedValue(controls, fallback) {
   return [...controls].find((control) => control.checked)?.value || fallback;
@@ -139,6 +153,7 @@ function activeScrollContainer() {
 
 function currentRenderOptions() {
   return {
+    language: currentLanguage(),
     profile: selectedValue(elements.profile, "mobile"),
     theme: selectedValue(elements.theme, "light"),
     background: selectedValue(elements.background, "plain"),
@@ -149,16 +164,62 @@ function currentRenderOptions() {
 function currentSettings() {
   return {
     ...currentRenderOptions(),
+    language: selectedValue(elements.language, currentLanguage()),
     shortcutEnabled: elements.shortcutEnabled.checked,
     accelerator: shortcutDraft || settings.accelerator,
   };
 }
 
 function updateShortcutLabel() {
-  const shortcut = elements.accelerator.value || "未设置";
+  const shortcut = elements.accelerator.value || t("settings.shortcutUnset");
   elements.shortcutSummary.textContent = elements.shortcutEnabled.checked
     ? shortcut.replaceAll("+", " + ")
-    : "快捷键已关闭";
+    : t("settings.shortcutOff");
+}
+
+function applyTranslations() {
+  document.documentElement.lang = currentLanguage();
+  clearTimeout(toastTimer);
+  elements.toast.classList.remove("is-visible");
+  elements.toast.textContent = "";
+  document.querySelectorAll("[data-i18n]").forEach((element) => {
+    element.textContent = t(element.dataset.i18n);
+  });
+  for (const [attribute, datasetName] of [
+    ["aria-label", "i18nAriaLabel"],
+    ["title", "i18nTitle"],
+    ["placeholder", "i18nPlaceholder"],
+  ]) {
+    document.querySelectorAll(`[data-${datasetName.replace(/[A-Z]/g, (letter) => `-${letter.toLowerCase()}`)}]`).forEach(
+      (element) => element.setAttribute(attribute, t(element.dataset[datasetName])),
+    );
+  }
+  const collapsed = elements.app.classList.contains("sidebar-collapsed");
+  const sidebarKey = collapsed
+    ? "nav.expandSidebar"
+    : "nav.collapseSidebar";
+  elements.toggleSidebar.title = t(sidebarKey);
+  elements.toggleSidebar.setAttribute("aria-label", t(sidebarKey));
+  if (instantSyntheticSource) {
+    const instant = documents.get("instant");
+    if (instant) {
+      instant.source = t("instant.richText");
+      elements.instantContent.value = instant.source;
+      elements.sourceContent.textContent = instant.source;
+      elements.splitSource.textContent = instant.source;
+    }
+  }
+  const active = currentDocument();
+  if (active?.kind === "instant") {
+    elements.documentTitle.textContent = t("instant.title");
+    elements.documentPath.textContent = t("instant.memoryOnly");
+  } else if (!active && currentMode === "reading") {
+    elements.documentTitle.textContent = t("mode.reading");
+    elements.documentPath.textContent = t("reading.description");
+  }
+  if (library.opened) renderDocumentLists();
+  updatePreviewToolbar();
+  updateStatus();
 }
 
 function syncReaderPresentation() {
@@ -172,10 +233,12 @@ function applySettingsToControls(next) {
   selectValue(elements.profile, settings.profile);
   selectValue(elements.theme, settings.theme);
   selectValue(elements.background, settings.background);
+  selectValue(elements.language, settings.language);
   elements.showFooter.checked = settings.showFooter;
   elements.shortcutEnabled.checked = settings.shortcutEnabled;
   elements.accelerator.value = settings.accelerator;
   shortcutDraft = settings.accelerator;
+  applyTranslations();
   syncReaderPresentation();
   updateShortcutLabel();
   updateStatus();
@@ -190,12 +253,17 @@ function persistSettings() {
         settings = result.settings;
         updateShortcutLabel();
       } else if (result.conflict) {
-        elements.shortcutError.textContent =
-          "快捷键已被其他应用占用，已保留原快捷键。";
+        elements.shortcutError.textContent = t(
+          "settings.shortcutConflictKept",
+        );
         applySettingsToControls(result.settings);
       }
     } catch (error) {
-      showToast(`保存设置失败：${error.message}`, "error", 2800);
+      showToast(
+        t("toast.settingsSaveFailed", { message: error.message }),
+        "error",
+        2800,
+      );
     }
   }, 180);
 }
@@ -205,29 +273,31 @@ function updateStatus() {
   const profile = currentRenderOptions().profile;
   elements.statusOrigin.innerHTML =
     document?.kind === "local"
-      ? `<i class="status-dot"></i>${document.status === "missing" ? "文件不可用" : "文件监听中"}`
-      : '<i class="status-dot"></i>即时分享';
+      ? `<i class="status-dot"></i>${document.status === "missing" ? t("status.fileUnavailable") : t("status.fileWatching")}`
+      : `<i class="status-dot"></i>${t("instant.title")}`;
   elements.statusView.textContent = {
-    preview: "预览模式",
-    split: "双栏模式",
-    source: "源码模式",
+    preview: t("view.previewMode"),
+    split: t("view.splitMode"),
+    source: t("view.sourceMode"),
   }[currentView];
-  elements.statusProfile.textContent = `${PROFILE_LABELS[profile]} · ${
+  elements.statusProfile.textContent = `${t(
+    profile === "desktop" ? "profile.desktop" : "profile.mobile",
+  )} · ${
     profile === "desktop" ? "1600" : "1080"
   } px`;
   elements.statusPages.textContent = currentPreview?.pages?.length
-    ? `${currentPreview.pages.length} 页图片`
+    ? formatPageCount(currentLanguage(), currentPreview.pages.length)
     : document?.source?.trim()
-      ? "等待预览"
-      : "等待内容";
+      ? t("status.waitingPreview")
+      : t("status.waitingContent");
 }
 
 function documentSubtitle(document) {
-  if (document.status === "missing") return "文件不可用 · 保留最后内容";
+  if (document.status === "missing") return t("status.missingDocument");
   const directory = document.path
     ? document.path.split("/").slice(0, -1).at(-1)
     : "";
-  return `${directory || "本地文档"} · 正在监听`;
+  return `${directory || t("status.localDocument")} · ${t("status.watching")}`;
 }
 
 function createDocumentItem(record, { recent = false } = {}) {
@@ -256,7 +326,9 @@ function createDocumentItem(record, { recent = false } = {}) {
   const action = document.createElement("button");
   action.type = "button";
   action.className = "item-action";
-  action.title = recent ? "从最近打开中移除" : "关闭文档";
+  action.title = recent
+    ? t("action.removeRecent")
+    : t("action.closeDocument");
   action.textContent = "×";
   action.addEventListener("click", async (event) => {
     event.preventDefault();
@@ -272,7 +344,7 @@ function createDocumentItem(record, { recent = false } = {}) {
         else setMode("reading");
       }
     } catch (error) {
-      showToast(`操作失败：${error.message}`, "error");
+      showToast(t("toast.actionFailed", { message: error.message }), "error");
     }
   });
 
@@ -291,14 +363,14 @@ function renderDocumentLists() {
   elements.openedDocuments.replaceChildren(
     ...(library.opened.length
       ? library.opened.map((document) => createDocumentItem(document))
-      : [emptyList("尚未打开 Markdown")]),
+      : [emptyList(t("reading.emptyOpened"))]),
   );
   elements.recentDocuments.replaceChildren(
     ...(library.recent.length
       ? library.recent.map((entry) =>
           createDocumentItem(entry, { recent: true }),
         )
-      : [emptyList("打开过的文档会显示在这里")]),
+      : [emptyList(t("reading.emptyRecent"))]),
   );
   elements.recentCount.textContent = String(library.recent.length);
 }
@@ -360,9 +432,8 @@ function setMode(mode) {
     activeDocumentId = "";
     currentPreview = undefined;
     clearPreview();
-    elements.documentTitle.textContent = "阅读";
-    elements.documentPath.textContent =
-      "打开 Markdown 后，可在这里阅读和分享";
+    elements.documentTitle.textContent = t("mode.reading");
+    elements.documentPath.textContent = t("reading.description");
     elements.sourceContent.textContent = "";
     elements.splitSource.textContent = "";
     updateStatus();
@@ -407,11 +478,12 @@ function activateDocument(
   }
   const state = currentState(documentId);
   currentView = state.view || "preview";
-  elements.documentTitle.textContent = document.name;
+  elements.documentTitle.textContent =
+    document.kind === "instant" ? t("instant.title") : document.name;
   elements.documentPath.textContent =
     document.kind === "local"
       ? document.path
-      : "暂存于内存 · 不保存历史";
+      : t("instant.memoryOnly");
   elements.sourceContent.textContent = document.source || "";
   elements.splitSource.textContent = document.source || "";
   renderDocumentLists();
@@ -437,7 +509,7 @@ function clearPreview() {
   elements.previewHost.replaceChildren();
   elements.splitHost.replaceChildren();
   elements.emptyState.hidden = false;
-  elements.outlineList.replaceChildren(emptyOutline("当前没有文档目录"));
+  elements.outlineList.replaceChildren(emptyOutline(t("outline.none")));
   outlineTargets = [];
   updatePreviewToolbar();
 }
@@ -457,7 +529,7 @@ async function renderPreview() {
   const sequence = ++renderSequence;
   elements.copyPreview.disabled = true;
   elements.shareToggle.disabled = true;
-  elements.statusPages.textContent = "正在排版…";
+  elements.statusPages.textContent = t("status.rendering");
   try {
     const result = await api.renderPreview({
       source,
@@ -475,7 +547,11 @@ async function renderPreview() {
   } catch (error) {
     if (sequence !== renderSequence) return;
     clearPreview();
-    showToast(`生成失败：${error.message}`, "error", 3000);
+    showToast(
+      t("toast.generateFailed", { message: error.message }),
+      "error",
+      3000,
+    );
   } finally {
     if (sequence === renderSequence) updateStatus();
   }
@@ -494,7 +570,11 @@ function updatePreviewToolbar() {
     ...pages.map((page) => {
       const option = document.createElement("option");
       option.value = String(page.index);
-      option.textContent = `第 ${page.index + 1} / ${pages.length} 页`;
+      option.textContent = formatPageOption(
+        currentLanguage(),
+        page.index + 1,
+        pages.length,
+      );
       return option;
     }),
   );
@@ -516,7 +596,7 @@ function mountFrame(host, preview) {
   shell.className = "frame-shell";
   const frame = document.createElement("iframe");
   frame.className = "document-frame";
-  frame.title = "Markdown 格式预览";
+  frame.title = t("preview.frameTitle");
   frame.setAttribute("sandbox", "allow-same-origin");
   frame.style.width = `${preview.options.width}px`;
   frame.style.height = `${preview.totalHeight}px`;
@@ -529,7 +609,7 @@ function mountFrame(host, preview) {
   if (isMobile) {
     const phone = document.createElement("div");
     phone.className = "phone-preview";
-    phone.setAttribute("aria-label", "移动端预览设备");
+    phone.setAttribute("aria-label", t("preview.mobileDevice"));
 
     const island = document.createElement("div");
     island.className = "phone-island";
@@ -618,9 +698,14 @@ function activeFrameHost() {
 
 function buildOutline(host = activeFrameHost()) {
   const record = frameRecords.get(host);
+  if (!record) {
+    elements.outlineList.replaceChildren(emptyOutline(t("outline.none")));
+    elements.outlineStatus.textContent = t("outline.current");
+    return;
+  }
   const frameDocument = record?.frame.contentDocument;
   if (!frameDocument) {
-    elements.outlineList.replaceChildren(emptyOutline("正在读取文档目录…"));
+    elements.outlineList.replaceChildren(emptyOutline(t("outline.reading")));
     return;
   }
   const headings = [
@@ -634,8 +719,8 @@ function buildOutline(host = activeFrameHost()) {
     text: heading.textContent.trim(),
   }));
   if (!outlineTargets.length) {
-    elements.outlineList.replaceChildren(emptyOutline("正文中没有标题"));
-    elements.outlineStatus.textContent = "0 项";
+    elements.outlineList.replaceChildren(emptyOutline(t("outline.noHeadings")));
+    elements.outlineStatus.textContent = formatItemCount(currentLanguage(), 0);
     return;
   }
   elements.outlineList.replaceChildren(
@@ -653,7 +738,10 @@ function buildOutline(host = activeFrameHost()) {
       return button;
     }),
   );
-  elements.outlineStatus.textContent = `${outlineTargets.length} 项`;
+  elements.outlineStatus.textContent = formatItemCount(
+    currentLanguage(),
+    outlineTargets.length,
+  );
   updateActiveOutline();
 }
 
@@ -713,18 +801,21 @@ function updateActiveOutline() {
 async function copyCurrentPage() {
   if (!currentPreview) return;
   elements.copyPreview.disabled = true;
-  const originalText = elements.copyPreview.textContent;
-  elements.copyPreview.textContent = "复制中…";
+  elements.copyPreview.textContent = t("share.copying");
   try {
     await api.copyPage({
       revision: currentPreview.revision,
       pageIndex: selectedPageIndex,
     });
-    showToast("图片已复制，可直接粘贴");
+    showToast(t("toast.copied"));
   } catch (error) {
-    showToast(`复制失败：${error.message}`, "error", 3000);
+    showToast(
+      t("toast.copyFailed", { message: error.message }),
+      "error",
+      3000,
+    );
   } finally {
-    elements.copyPreview.textContent = originalText;
+    elements.copyPreview.textContent = t("share.copy");
     updatePreviewToolbar();
   }
 }
@@ -738,9 +829,15 @@ async function exportCurrentPage() {
       pageIndex: selectedPageIndex,
       suggestedName: "",
     });
-    if (!result.canceled) showToast(`图片已导出：${result.path}`);
+    if (!result.canceled) {
+      showToast(t("toast.exported", { path: result.path }));
+    }
   } catch (error) {
-    showToast(`导出失败：${error.message}`, "error", 3000);
+    showToast(
+      t("toast.exportFailed", { message: error.message }),
+      "error",
+      3000,
+    );
   }
 }
 
@@ -749,20 +846,27 @@ async function pasteClipboard() {
   try {
     const payload = await api.readClipboard();
     if (!payload.text && !payload.html) {
-      showToast("剪贴板中没有文字", "error");
+      showToast(t("toast.clipboardEmpty"), "error");
       return;
     }
     const instant = documents.get("instant");
-    instant.source = payload.text || "已读取富文本内容";
+    instantSyntheticSource = !payload.text && Boolean(payload.html);
+    instant.source = payload.text || t("instant.richText");
     instant.sourceFormat = payload.format;
     instant.html = payload.format === "html" ? payload.html : "";
     elements.instantContent.value = instant.source;
     await api.updateInstantDocument(instant);
     setMode("instant");
     scheduleRender(0);
-    showToast(payload.format === "html" ? "已读取富文本" : "已读取文本");
+    showToast(
+      t(payload.format === "html" ? "toast.richTextRead" : "toast.textRead"),
+    );
   } catch (error) {
-    showToast(`读取剪贴板失败：${error.message}`, "error", 2800);
+    showToast(
+      t("toast.clipboardReadFailed", { message: error.message }),
+      "error",
+      2800,
+    );
   } finally {
     elements.paste.disabled = false;
   }
@@ -771,13 +875,14 @@ async function pasteClipboard() {
 async function saveInstant() {
   const source = elements.instantContent.value;
   if (!source.trim()) {
-    showToast("即时内容为空，无法保存", "error");
+    showToast(t("toast.instantEmpty"), "error");
     return;
   }
   elements.saveInstant.disabled = true;
   try {
     const firstHeading =
-      source.match(/^\s*#\s+(.+)$/m)?.[1]?.trim().slice(0, 50) || "即时分享";
+      source.match(/^\s*#\s+(.+)$/m)?.[1]?.trim().slice(0, 50) ||
+      t("file.instantName");
     const result = await api.saveInstantDocument({
       source,
       suggestedName: `${firstHeading}.md`,
@@ -791,9 +896,13 @@ async function saveInstant() {
         resetScroll: true,
       });
     }
-    showToast("文档已保存并加入阅读列表");
+    showToast(t("toast.documentSaved"));
   } catch (error) {
-    showToast(`保存失败：${error.message}`, "error", 3000);
+    showToast(
+      t("toast.saveFailed", { message: error.message }),
+      "error",
+      3000,
+    );
   } finally {
     elements.saveInstant.disabled = false;
   }
@@ -811,7 +920,11 @@ async function openDocuments() {
     }
     reportOpenErrors(result.errors);
   } catch (error) {
-    showToast(`打开失败：${error.message}`, "error", 3000);
+    showToast(
+      t("toast.openFailed", { message: error.message }),
+      "error",
+      3000,
+    );
   }
 }
 
@@ -825,7 +938,11 @@ async function openRecent(filePath) {
     }
     reportOpenErrors(result.errors);
   } catch (error) {
-    showToast(`打开失败：${error.message}`, "error", 3000);
+    showToast(
+      t("toast.openFailed", { message: error.message }),
+      "error",
+      3000,
+    );
   }
 }
 
@@ -834,7 +951,7 @@ function reportOpenErrors(errors = []) {
   const message =
     errors.length === 1
       ? errors[0].error
-      : `${errors.length} 个文件未能打开`;
+      : formatOpenErrorCount(currentLanguage(), errors.length);
   showToast(message, "error", 3200);
 }
 
@@ -848,7 +965,11 @@ async function openDroppedFiles(files) {
     }
     reportOpenErrors(result.errors);
   } catch (error) {
-    showToast(`拖入文件失败：${error.message}`, "error", 3000);
+    showToast(
+      t("toast.dropFailed", { message: error.message }),
+      "error",
+      3000,
+    );
   }
 }
 
@@ -891,15 +1012,18 @@ async function applyShortcut() {
   try {
     const result = await api.registerShortcut(shortcutDraft);
     if (!result.ok) {
-      elements.shortcutError.textContent =
-        "快捷键已被系统或其他应用占用，请换一个组合。";
+      elements.shortcutError.textContent = t(
+        "settings.shortcutConflict",
+      );
       if (result.settings) applySettingsToControls(result.settings);
       return;
     }
     applySettingsToControls(result.settings);
-    showToast("全局快捷键已更新");
+    showToast(t("settings.shortcutUpdated"));
   } catch (error) {
-    elements.shortcutError.textContent = `设置失败：${error.message}`;
+    elements.shortcutError.textContent = t("error.settingsFailed", {
+      message: error.message,
+    });
   } finally {
     elements.applyShortcut.disabled = false;
   }
@@ -917,6 +1041,7 @@ elements.instantContent.addEventListener("input", () => {
   const instant = documents.get("instant");
   if (!instant) return;
   instant.source = elements.instantContent.value;
+  instantSyntheticSource = false;
   instant.sourceFormat = "markdown";
   instant.html = "";
   clearTimeout(instantTimer);
@@ -947,7 +1072,9 @@ elements.openDocument.addEventListener("click", openDocuments);
 
 elements.toggleSidebar.addEventListener("click", () => {
   const collapsed = elements.app.classList.toggle("sidebar-collapsed");
-  elements.toggleSidebar.title = collapsed ? "展开侧栏" : "收起侧栏";
+  const label = t(collapsed ? "nav.expandSidebar" : "nav.collapseSidebar");
+  elements.toggleSidebar.title = label;
+  elements.toggleSidebar.setAttribute("aria-label", label);
   setTimeout(updateAllFrameScales, 30);
 });
 
@@ -971,6 +1098,29 @@ elements.toggleStyle.addEventListener("click", () => {
     });
   },
 );
+elements.language.forEach((control) => {
+  control.addEventListener("change", async () => {
+    settings.language = selectedValue(elements.language, currentLanguage());
+    applyTranslations();
+    syncReaderPresentation();
+    scheduleRender(0);
+    try {
+      const result = await api.updateSettings(currentSettings());
+      applySettingsToControls(result.settings);
+      if (!result.ok && result.conflict) {
+        elements.shortcutError.textContent = t(
+          "settings.shortcutConflictKept",
+        );
+      }
+    } catch (error) {
+      showToast(
+        t("toast.settingsSaveFailed", { message: error.message }),
+        "error",
+        2800,
+      );
+    }
+  });
+});
 elements.titleEnabled.addEventListener("change", () => {
   elements.imageTitle.hidden = !elements.titleEnabled.checked;
   if (elements.titleEnabled.checked) elements.imageTitle.focus();
@@ -1004,14 +1154,15 @@ elements.shortcutEnabled.addEventListener("change", async () => {
   elements.shortcutError.textContent = "";
   const result = await api.updateSettings(currentSettings());
   if (!result.ok) {
-    elements.shortcutError.textContent =
-      "快捷键已被系统或其他应用占用，无法启用。";
+    elements.shortcutError.textContent = t(
+      "settings.shortcutConflictEnable",
+    );
   }
   applySettingsToControls(result.settings);
 });
 elements.accelerator.addEventListener("focus", () => {
   elements.accelerator.classList.add("is-recording");
-  elements.accelerator.value = "请按新的组合键…";
+  elements.accelerator.value = t("settings.shortcutRecord");
 });
 elements.accelerator.addEventListener("blur", () => {
   elements.accelerator.classList.remove("is-recording");
@@ -1022,8 +1173,7 @@ elements.accelerator.addEventListener("keydown", (event) => {
   event.stopPropagation();
   const next = acceleratorFromEvent(event);
   if (!next) {
-    elements.shortcutError.textContent =
-      "请同时按下至少一个修饰键和一个普通按键。";
+    elements.shortcutError.textContent = t("settings.shortcutInvalid");
     return;
   }
   shortcutDraft = next;
@@ -1084,6 +1234,7 @@ api.onQuickLoad((payload) => {
   const instant = documents.get("instant");
   if (!instant) return;
   instant.source = payload.source || "";
+  instantSyntheticSource = false;
   instant.sourceFormat = payload.sourceFormat || "markdown";
   instant.html = payload.sourceFormat === "html" ? payload.html : "";
   elements.instantContent.value = instant.source;
@@ -1119,7 +1270,7 @@ api.onDocumentChanged((payload) => {
     elements.splitSource.textContent = changed.source || "";
     scheduleRender(0);
     if (payload.type === "missing") {
-      showToast("当前文件已被移动或删除，已保留最后内容", "error", 3200);
+      showToast(t("toast.fileMissing"), "error", 3200);
     }
   }
 });
@@ -1144,5 +1295,9 @@ async function initialize() {
 }
 
 initialize().catch((error) => {
-  showToast(`初始化失败：${error.message}`, "error", 4000);
+  showToast(
+    t("toast.initializeFailed", { message: error.message }),
+    "error",
+    4000,
+  );
 });

@@ -7,6 +7,11 @@ import { Marked } from "marked";
 import markedFootnote from "marked-footnote";
 import { markedHighlight } from "marked-highlight";
 import sanitizeHtml from "sanitize-html";
+import {
+  createLocalizedError,
+  formatLocalizedDate,
+  normalizeLanguage,
+} from "./i18n.mjs";
 
 const SOURCE_DIR = path.dirname(fileURLToPath(import.meta.url));
 const PROJECT_DIR = path.resolve(SOURCE_DIR, "..");
@@ -231,6 +236,7 @@ export function normalizeRenderOptions(input = {}) {
   const preset = OUTPUT_PROFILES[profile];
 
   return {
+    language: normalizeLanguage(input.language),
     profile,
     theme: input.theme === "dark" ? "dark" : "light",
     background:
@@ -249,7 +255,9 @@ export function normalizeRenderOptions(input = {}) {
 
 export function buildDocument(input) {
   const source = String(input.source ?? "");
-  if (!source.trim()) throw new Error("内容不能为空");
+  if (!source.trim()) {
+    throw createLocalizedError(input.language, "error.emptyContent");
+  }
 
   const options = normalizeRenderOptions(input);
   const content = wrapTables(renderSource(source, input.sourceFormat));
@@ -257,14 +265,7 @@ export function buildDocument(input) {
   const titleBlock = title
     ? `<h1 class="document-title">${escapeHtml(title)}</h1>`
     : "";
-  const generatedAt = new Intl.DateTimeFormat("zh-CN", {
-    year: "numeric",
-    month: "2-digit",
-    day: "2-digit",
-    hour: "2-digit",
-    minute: "2-digit",
-    hour12: false,
-  }).format(new Date());
+  const generatedAt = formatLocalizedDate(options.language);
   const footerBlock = options.showFooter
     ? `<footer class="footer">
           <span>MarkShot</span>
@@ -286,7 +287,7 @@ export function buildDocument(input) {
     .slice(0, 24);
 
   const html = `<!doctype html>
-<html lang="zh-CN" data-theme="${options.theme}" data-background="${options.background}">
+<html lang="${options.language}" data-theme="${options.theme}" data-background="${options.background}">
   <head>
     <meta charset="utf-8">
     <meta http-equiv="Content-Security-Policy" content="default-src 'none'; img-src http: https: data:; style-src 'unsafe-inline';">

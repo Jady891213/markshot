@@ -52,3 +52,17 @@ test("copy and export split action stays seamless and equal-height", () => {
     /\.share-split \.share-toggle\s*\{[^}]*border-left: 0;/s,
   );
 });
+
+test("language controls update the live interface without shrinking labels", () => {
+  assert.match(html, /<script type="module" src="\.\/app\.js"><\/script>/);
+  assert.match(html, /name="language" value="zh-CN"/);
+  assert.match(html, /name="language" value="en"/);
+  assert.match(html, /data-i18n="settings\.language"/);
+  assert.match(script, /document\.documentElement\.lang = currentLanguage\(\)/);
+  assert.match(script, /scheduleRender\(0\)/);
+  assert.match(styles, /\.settings-dialog\s*\{[^}]*width: 460px;/s);
+  assert.match(
+    styles,
+    /\.mode-switch button,\s*\.view-switch button\s*\{[^}]*white-space: nowrap;/s,
+  );
+});

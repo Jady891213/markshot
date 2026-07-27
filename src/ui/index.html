@@ -27,6 +27,8 @@
             type="button"
             aria-label="快捷键设置"
             title="快捷键设置"
+            data-i18n-aria-label="app.settings"
+            data-i18n-title="app.settings"
           >
             <svg viewBox="0 0 24 24" aria-hidden="true">
               <circle cx="12" cy="12" r="3"></circle>
@@ -38,7 +40,11 @@
         </div>
       </header>
 
-      <nav class="operationbar" aria-label="文档操作">
+      <nav
+        class="operationbar"
+        aria-label="文档操作"
+        data-i18n-aria-label="nav.documentActions"
+      >
         <div class="operationbar-sidebar">
           <button
             class="collapse-button"
@@ -46,53 +52,69 @@
             type="button"
             aria-label="收起侧栏"
             title="收起侧栏"
+            data-i18n-aria-label="nav.collapseSidebar"
+            data-i18n-title="nav.collapseSidebar"
           >
             <svg viewBox="0 0 24 24" aria-hidden="true">
               <path d="M4 5h16v14H4zM9 5v14"></path>
               <path d="m7 10-2 2 2 2"></path>
             </svg>
           </button>
-          <div class="mode-switch" aria-label="内容模式">
-            <button class="active" type="button" data-mode="instant">即时</button>
-            <button type="button" data-mode="reading">阅读</button>
+          <div
+            class="mode-switch"
+            aria-label="内容模式"
+            data-i18n-aria-label="nav.contentMode"
+          >
+            <button class="active" type="button" data-mode="instant" data-i18n="mode.instant">即时</button>
+            <button type="button" data-mode="reading" data-i18n="mode.reading">阅读</button>
           </div>
         </div>
 
         <div class="operationbar-main">
           <div class="document-heading">
-            <b id="document-title">即时分享</b>
-            <small id="document-path">暂存于内存 · 不保存历史</small>
+            <b id="document-title" data-i18n="instant.title">即时分享</b>
+            <small id="document-path" data-i18n="instant.memoryOnly">暂存于内存 · 不保存历史</small>
           </div>
 
-          <div class="view-switch" aria-label="切换视图">
+          <div
+            class="view-switch"
+            aria-label="切换视图"
+            data-i18n-aria-label="view.switch"
+          >
             <button class="active" type="button" data-view="preview">
               <svg viewBox="0 0 24 24" aria-hidden="true">
                 <path d="M5 4h14v16H5zM8 8h8M8 12h8M8 16h5"></path>
               </svg>
-              预览
+              <span data-i18n="view.preview">预览</span>
             </button>
             <button type="button" data-view="split">
               <svg viewBox="0 0 24 24" aria-hidden="true">
                 <path d="M3 5h18v14H3zM11 5v14"></path>
               </svg>
-              双栏
+              <span data-i18n="view.split">双栏</span>
             </button>
             <button type="button" data-view="source">
               <svg viewBox="0 0 24 24" aria-hidden="true">
                 <path d="m8 8-4 4 4 4M16 8l4 4-4 4M14 5l-4 14"></path>
               </svg>
-              源码
+              <span data-i18n="view.source">源码</span>
             </button>
           </div>
 
           <div class="operation-actions">
-            <select id="preview-page" aria-label="选择图片页面" hidden></select>
+            <select
+              id="preview-page"
+              aria-label="选择图片页面"
+              data-i18n-aria-label="share.selectPage"
+              hidden
+            ></select>
             <div class="share-split">
               <button
                 class="button button-primary"
                 id="copy-preview"
                 type="button"
                 disabled
+                data-i18n="share.copy"
               >
                 复制图片
               </button>
@@ -101,17 +123,18 @@
                 id="share-menu-toggle"
                 type="button"
                 aria-label="更多图片操作"
+                data-i18n-aria-label="share.more"
                 disabled
               >
                 ▾
               </button>
               <div class="share-menu" id="share-menu" hidden>
-                <button id="export-preview" type="button">导出图片</button>
+                <button id="export-preview" type="button" data-i18n="share.export">导出图片</button>
               </div>
             </div>
             <span class="toolbar-divider" aria-hidden="true"></span>
             <button class="button button-secondary" id="toggle-style" type="button">
-              风格
+              <span data-i18n="share.style">风格</span>
             </button>
           </div>
         </div>
@@ -125,19 +148,21 @@
               id="instant-content"
               aria-label="即时分享内容"
               placeholder="在这里输入或粘贴要分享的内容…"
+              data-i18n-aria-label="instant.title"
+              data-i18n-placeholder="instant.placeholder"
               spellcheck="false"
             ></textarea>
             <footer class="instant-footer">
               <div>
                 <button class="text-action" id="clear-content" type="button">
-                  清除
+                  <span data-i18n="instant.clear">清除</span>
                 </button>
                 <button class="text-action text-accent" id="paste-content" type="button">
-                  粘贴
+                  <span data-i18n="instant.paste">粘贴</span>
                 </button>
               </div>
               <button class="text-action save-action" id="save-instant" type="button">
-                保存文档
+                <span data-i18n="instant.save">保存文档</span>
               </button>
             </footer>
           </section>
@@ -145,16 +170,16 @@
           <section class="sidebar-panel reading-panel" data-sidebar-panel="reading">
             <section class="sidebar-section">
               <div class="section-heading">
-                <b>已打开</b>
+                <b data-i18n="reading.opened">已打开</b>
                 <button class="open-document" id="open-document" type="button">
-                  ＋ 打开 Markdown
+                  <span data-i18n="reading.openMarkdown">＋ 打开 Markdown</span>
                 </button>
               </div>
               <div class="document-list" id="opened-documents"></div>
             </section>
             <section class="sidebar-section recent-section">
               <div class="section-heading">
-                <b>最近打开</b>
+                <b data-i18n="reading.recent">最近打开</b>
                 <span id="recent-count">0</span>
               </div>
               <div class="document-list" id="recent-documents"></div>
@@ -170,15 +195,15 @@
                   <div class="frame-host" id="preview-host"></div>
                   <div class="empty-state" id="empty-state">
                     <div class="empty-icon" aria-hidden="true">▤</div>
-                    <h2>粘贴内容或打开 Markdown</h2>
-                    <p>阅读到的效果，就是最终分享出去的效果。</p>
+                    <h2 data-i18n="empty.title">粘贴内容或打开 Markdown</h2>
+                    <p data-i18n="empty.description">阅读到的效果，就是最终分享出去的效果。</p>
                   </div>
                 </div>
               </section>
 
               <section class="view split-view" data-view-panel="split">
                 <div class="source-pane">
-                  <header><b>Markdown 源码</b><span>只读</span></header>
+                  <header><b data-i18n="source.title">Markdown 源码</b><span data-i18n="source.readOnly">只读</span></header>
                   <pre id="split-source" tabindex="0"></pre>
                 </div>
                 <div class="split-preview">
@@ -187,7 +212,7 @@
               </section>
 
               <section class="view source-view" data-view-panel="source">
-                <header><b>Markdown 源码</b><span>只读</span></header>
+                <header><b data-i18n="source.title">Markdown 源码</b><span data-i18n="source.readOnly">只读</span></header>
                 <pre id="source-content" tabindex="0"></pre>
               </section>
             </div>
@@ -196,44 +221,44 @@
           <aside class="right-panel">
             <section class="right-content active" data-right-content="outline">
               <div class="right-heading">
-                <b>文档目录</b>
-                <span id="outline-status">当前文章</span>
+                <b data-i18n="outline.title">文档目录</b>
+                <span id="outline-status" data-i18n="outline.current">当前文章</span>
               </div>
               <nav class="outline-list" id="outline-list"></nav>
             </section>
 
             <section class="right-content" data-right-content="style">
               <div class="right-heading">
-                <b>呈现风格</b>
-                <span>预览 = 分享</span>
+                <b data-i18n="style.title">呈现风格</b>
+                <span data-i18n="style.subtitle">预览 = 分享</span>
               </div>
               <section class="config-group">
-                <h3>分享场景</h3>
+                <h3 data-i18n="style.scenario">分享场景</h3>
                 <div class="choice-grid">
                   <label class="choice-card">
                     <input type="radio" name="profile" value="mobile" />
-                    <span><b>移动端</b><small>1080 px</small></span>
+                    <span><b data-i18n="profile.mobile">移动端</b><small>1080 px</small></span>
                   </label>
                   <label class="choice-card">
                     <input type="radio" name="profile" value="desktop" />
-                    <span><b>PC</b><small>1600 px</small></span>
+                    <span><b data-i18n="profile.desktop">PC</b><small>1600 px</small></span>
                   </label>
                 </div>
               </section>
               <section class="config-group">
-                <h3>颜色主题</h3>
+                <h3 data-i18n="theme.title">颜色主题</h3>
                 <div class="choice-grid">
                   <label class="choice-card">
                     <input type="radio" name="theme" value="light" />
-                    <span><b>☀ 浅色</b><small>明亮纸张</small></span>
+                    <span><b data-i18n="theme.light">☀ 浅色</b><small data-i18n="theme.lightDescription">明亮纸张</small></span>
                   </label>
                   <label class="choice-card">
                     <input type="radio" name="theme" value="dark" />
-                    <span><b>◐ 深色</b><small>暗色阅读</small></span>
+                    <span><b data-i18n="theme.dark">◐ 深色</b><small data-i18n="theme.darkDescription">暗色阅读</small></span>
                   </label>
                 </div>
                 <label class="switch-row">
-                  <span><b>图片标题</b><small>显示在正文上方</small></span>
+                  <span><b data-i18n="image.title">图片标题</b><small data-i18n="image.titleDescription">显示在正文上方</small></span>
                   <input id="title-enabled" type="checkbox" role="switch" />
                 </label>
                 <input
@@ -241,27 +266,28 @@
                   id="image-title"
                   type="text"
                   placeholder="输入图片标题"
+                  data-i18n-placeholder="image.titlePlaceholder"
                   hidden
                 />
                 <label class="switch-row">
-                  <span><b>图片页脚</b><small>显示 MarkShot 和生成时间</small></span>
+                  <span><b data-i18n="image.footer">图片页脚</b><small data-i18n="image.footerDescription">显示 MarkShot 和生成时间</small></span>
                   <input id="show-footer" type="checkbox" role="switch" />
                 </label>
               </section>
               <section class="config-group">
-                <h3>背景</h3>
+                <h3 data-i18n="background.title">背景</h3>
                 <div class="choice-grid choice-grid-three">
                   <label class="choice-card">
                     <input type="radio" name="background" value="none" />
-                    <span><b>无</b><small>仅内容</small></span>
+                    <span><b data-i18n="background.none">无</b><small data-i18n="background.noneDescription">仅内容</small></span>
                   </label>
                   <label class="choice-card">
                     <input type="radio" name="background" value="plain" />
-                    <span><b>纯色</b><small>干净克制</small></span>
+                    <span><b data-i18n="background.plain">纯色</b><small data-i18n="background.plainDescription">干净克制</small></span>
                   </label>
                   <label class="choice-card">
                     <input type="radio" name="background" value="soft" />
-                    <span><b>柔和</b><small>强调光晕</small></span>
+                    <span><b data-i18n="background.soft">柔和</b><small data-i18n="background.softDescription">强调光晕</small></span>
                   </label>
                 </div>
               </section>
@@ -271,19 +297,19 @@
       </main>
 
       <footer class="statusbar">
-        <span id="status-origin"><i class="status-dot"></i>即时分享</span>
-        <span id="status-view">预览模式</span>
+        <span id="status-origin"><i class="status-dot"></i><span data-i18n="instant.title">即时分享</span></span>
+        <span id="status-view" data-i18n="view.previewMode">预览模式</span>
         <span id="status-profile">移动端 · 1080 px</span>
         <span class="status-spacer"></span>
-        <span id="status-pages">等待内容</span>
+        <span id="status-pages" data-i18n="status.waitingContent">等待内容</span>
         <span>UTF-8</span>
       </footer>
     </div>
 
     <div class="drop-overlay" id="drop-overlay" hidden>
       <div>
-        <b>松开以打开 Markdown</b>
-        <span>支持 .md、.markdown 和 .mdown</span>
+        <b data-i18n="drop.title">松开以打开 Markdown</b>
+        <span data-i18n="drop.description">支持 .md、.markdown 和 .mdown</span>
       </div>
     </div>
 
@@ -296,42 +322,61 @@
       >
         <header class="dialog-header">
           <div>
-            <h2 id="settings-dialog-title">快捷键设置</h2>
-            <p>复制文字后，可直接生成图片到剪贴板</p>
+            <h2 id="settings-dialog-title" data-i18n="settings.title">设置</h2>
+            <p data-i18n="settings.subtitle">语言与快捷键</p>
           </div>
           <button
             class="icon-button"
             id="close-settings"
             type="button"
             aria-label="关闭设置"
+            data-i18n-aria-label="app.closeSettings"
           >
             ×
           </button>
         </header>
         <div class="dialog-body">
+          <section class="settings-section">
+            <div class="settings-section-heading">
+              <b data-i18n="settings.language">语言</b>
+              <small data-i18n="settings.languageDescription">切换 MarkShot 自有界面与提示</small>
+            </div>
+            <div class="language-options">
+              <label class="language-option">
+                <input type="radio" name="language" value="zh-CN" />
+                <span data-i18n="settings.chinese">简体中文</span>
+              </label>
+              <label class="language-option">
+                <input type="radio" name="language" value="en" />
+                <span data-i18n="settings.english">English</span>
+              </label>
+            </div>
+          </section>
+          <section class="settings-section settings-shortcut-section">
           <label class="switch-row">
             <span>
-              <b>启用全局快捷键</b>
-              <small>关闭后不会监听系统按键</small>
+              <b data-i18n="settings.shortcutEnabled">启用全局快捷键</b>
+              <small data-i18n="settings.shortcutDescription">关闭后不会监听系统按键</small>
             </span>
             <input id="shortcut-enabled" type="checkbox" role="switch" />
           </label>
           <div class="shortcut-editor">
             <label class="field">
-              <span>快捷键</span>
+              <span data-i18n="settings.shortcut">快捷键</span>
               <input id="accelerator" type="text" readonly />
             </label>
             <button class="button button-primary" id="apply-shortcut" type="button">
-              应用
+              <span data-i18n="settings.apply">应用</span>
             </button>
           </div>
-          <p id="shortcut-help" class="help">点击输入框后按下新的组合键。</p>
+          <p id="shortcut-help" class="help" data-i18n="settings.shortcutHelp">点击输入框后按下新的组合键。</p>
           <p id="shortcut-error" class="field-error" role="alert"></p>
+          </section>
         </div>
       </section>
     </div>
 
     <div class="toast" id="toast" role="status" aria-live="polite"></div>
-    <script src="./app.js"></script>
+    <script type="module" src="./app.js"></script>
   </body>
 </html>

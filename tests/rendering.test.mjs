@@ -82,6 +82,7 @@ test("sanitizer removes executable HTML and unsafe image URLs", () => {
 
 test("the two output profiles enforce their own layout", () => {
   assert.deepEqual(normalizeRenderOptions({ profile: "mobile" }), {
+    language: "zh-CN",
     profile: "mobile",
     theme: "light",
     background: "plain",
@@ -91,6 +92,7 @@ test("the two output profiles enforce their own layout", () => {
     padding: 40,
   });
   assert.deepEqual(normalizeRenderOptions({ profile: "desktop" }), {
+    language: "zh-CN",
     profile: "desktop",
     theme: "light",
     background: "plain",
@@ -109,6 +111,7 @@ test("the two output profiles enforce their own layout", () => {
       background: "soft",
     }),
     {
+      language: "zh-CN",
       profile: "mobile",
       theme: "dark",
       background: "soft",
@@ -119,6 +122,7 @@ test("the two output profiles enforce their own layout", () => {
     },
   );
   assert.deepEqual(normalizeRenderOptions({ background: "none" }), {
+    language: "zh-CN",
     profile: "mobile",
     theme: "light",
     background: "none",
@@ -137,10 +141,25 @@ test("document generation and page splitting remain deterministic", () => {
     title: "",
   });
   assert.match(result.html, /charset="utf-8"/);
+  assert.match(result.html, /<html lang="zh-CN"/);
   assert.match(result.html, /--canvas-width: 1080px/);
   assert.match(result.html, /<h1>中文标题<\/h1>/);
   assert.match(result.html, /<footer class="footer">/);
   assert.equal(result.revision.length, 24);
+
+  const english = buildDocument({
+    source: "# 中文标题\n\n正文",
+    sourceFormat: "markdown",
+    profile: "mobile",
+    language: "en",
+    title: "",
+  });
+  assert.match(english.html, /<html lang="en"/);
+  assert.match(
+    english.html,
+    /[01]\d\/[0-3]\d\/\d{4},? 24:00|[01]\d\/[0-3]\d\/\d{4},? \d{2}:\d{2}|[01]\d\/[0-3]\d\/\d{4},? \d:\d{2}/,
+  );
+  assert.notEqual(english.revision, result.revision);
 
   const withoutFooter = buildDocument({
     source: "正文",

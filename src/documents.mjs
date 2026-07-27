@@ -2,6 +2,7 @@ import crypto from "node:crypto";
 import { watch } from "node:fs";
 import fs from "node:fs/promises";
 import path from "node:path";
+import { createLocalizedError } from "./i18n.mjs";
 import { decodeText } from "./rendering.mjs";
 
 export const MAX_RECENT_FILES = 20;
@@ -88,9 +89,14 @@ function publicDocument(record) {
 }
 
 export class DocumentLibrary {
-  constructor({ recentPath, onEvent = () => {} }) {
+  constructor({
+    recentPath,
+    onEvent = () => {},
+    getLanguage = () => "zh-CN",
+  }) {
     this.recentPath = recentPath;
     this.onEvent = onEvent;
+    this.getLanguage = getLanguage;
     this.documents = new Map();
     this.recentFiles = [];
     this.watchers = new Map();
@@ -136,7 +142,10 @@ export class DocumentLibrary {
 
   async openPath(filePath) {
     if (!isMarkdownPath(filePath)) {
-      throw new Error("仅支持 .md、.markdown 和 .mdown 文件");
+      throw createLocalizedError(
+        this.getLanguage(),
+        "error.unsupportedMarkdown",
+      );
     }
 
     const resolvedPath = await this.resolvePath(filePath);
@@ -152,7 +161,9 @@ export class DocumentLibrary {
       fs.readFile(resolvedPath),
       fs.stat(resolvedPath),
     ]);
-    if (!stat.isFile()) throw new Error("所选路径不是文件");
+    if (!stat.isFile()) {
+      throw createLocalizedError(this.getLanguage(), "error.notAFile");
+    }
 
     const record = {
       id: documentId(resolvedPath),

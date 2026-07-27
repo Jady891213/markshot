@@ -199,6 +199,7 @@ svg {
   border-radius: 7px;
   cursor: pointer;
   font-size: 12px;
+  white-space: nowrap;
 }
 
 .mode-switch {
@@ -278,6 +279,7 @@ svg {
   cursor: pointer;
   font-size: 12px;
   font-weight: 620;
+  white-space: nowrap;
 }
 
 .button:hover:not(:disabled) {
@@ -493,6 +495,7 @@ svg {
 
 .open-document {
   padding-right: 2px;
+  white-space: nowrap;
 }
 
 .document-list {
@@ -1006,6 +1009,9 @@ svg {
 .choice-card b,
 .choice-card small {
   display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .choice-card b {
@@ -1164,7 +1170,9 @@ svg {
 }
 
 .settings-dialog {
-  width: 430px;
+  width: 460px;
+  max-width: calc(100vw - 32px);
+  max-height: calc(100vh - 32px);
   overflow: hidden;
   background: white;
   border: 1px solid var(--line);
@@ -1194,7 +1202,79 @@ svg {
 }
 
 .dialog-body {
+  max-height: calc(100vh - 120px);
+  overflow-y: auto;
   padding: 8px 20px 20px;
+}
+
+.settings-section {
+  padding: 13px 0 16px;
+}
+
+.settings-section + .settings-section {
+  border-top: 1px solid var(--line-soft);
+}
+
+.settings-section-heading {
+  display: grid;
+  gap: 3px;
+  margin-bottom: 10px;
+}
+
+.settings-section-heading b {
+  font-size: 12px;
+}
+
+.settings-section-heading small {
+  color: var(--muted);
+  font-size: 10px;
+}
+
+.language-options {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.language-option {
+  position: relative;
+  min-width: 0;
+  cursor: pointer;
+}
+
+.language-option input {
+  position: absolute;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.language-option span {
+  display: grid;
+  min-height: 38px;
+  place-items: center;
+  padding: 8px 12px;
+  color: #4b596d;
+  background: #f8fafc;
+  border: 1px solid #dce3eb;
+  border-radius: 8px;
+  font-size: 12px;
+  font-weight: 650;
+  white-space: nowrap;
+}
+
+.language-option input:checked + span {
+  color: #3158b1;
+  background: var(--accent-soft);
+  border-color: #83a3f5;
+  box-shadow: 0 0 0 1px #a9bfff inset;
+}
+
+.language-option input:focus-visible + span {
+  box-shadow: 0 0 0 3px #edf2ff;
+}
+
+.settings-shortcut-section .switch-row {
+  padding-top: 0;
 }
 
 .shortcut-editor {

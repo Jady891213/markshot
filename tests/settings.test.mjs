@@ -22,6 +22,7 @@ test("settings persist presentation defaults without source content", async () =
   try {
     const saved = await saveSettings(filePath, {
       profile: "desktop",
+      language: "en",
       theme: "dark",
       background: "soft",
       showFooter: false,
@@ -39,9 +40,16 @@ test("settings persist presentation defaults without source content", async () =
     assert.equal(saved.fontSize, 32);
     assert.equal(saved.padding, 48);
     assert.equal(saved.showFooter, false);
+    assert.equal(saved.language, "en");
     assert.equal("source" in loaded, false);
     assert.equal("title" in loaded, false);
   } finally {
     await fs.rm(directory, { recursive: true, force: true });
   }
+});
+
+test("legacy and invalid language settings fall back to Simplified Chinese", () => {
+  assert.equal(normalizeSettings({ language: undefined }).language, "zh-CN");
+  assert.equal(normalizeSettings({ language: "fr" }).language, "zh-CN");
+  assert.equal(normalizeSettings({ language: "en" }).language, "en");
 });

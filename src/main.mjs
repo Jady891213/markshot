@@ -21,6 +21,12 @@ import {
 } from "./rendering.mjs";
 import { DocumentLibrary, isMarkdownPath } from "./documents.mjs";
 import {
+  createLocalizedError,
+  formatMultiPageMessage,
+  normalizeLanguage,
+  translate,
+} from "./i18n.mjs";
+import {
   DEFAULT_SETTINGS,
   loadSettings,
   normalizeSettings,
@@ -57,6 +63,10 @@ let instantDocument = {
   html: "",
   status: "ready",
 };
+
+function t(key, values = {}) {
+  return translate(normalizeLanguage(settings.language), key, values);
+}
 
 app.on("open-file", (event, filePath) => {
   event.preventDefault();
@@ -229,8 +239,10 @@ async function captureRecord(record) {
             });
       const size = image.getSize();
       if (size.width !== page.width || size.height !== page.height) {
-        throw new Error(
-          `图片尺寸异常：预期 ${page.width}×${page.height}，实际 ${size.width}×${size.height}`,
+        throw createLocalizedError(settings.language, "error.invalidImageSize", {
+          expected: `${page.width}×${page.height}`,
+          actual: `${size.width}×${size.height}`,
+        },
         );
       }
       images.push(image);
@@ -251,7 +263,12 @@ async function optimizedPagePng(record, pageIndex, image) {
 async function copyPageImage(record, pageIndex, image) {
   const png = await optimizedPagePng(record, pageIndex, image);
   const clipboardImage = nativeImage.createFromBuffer(png);
-  if (clipboardImage.isEmpty()) throw new Error("压缩后的图片无法读取");
+  if (clipboardImage.isEmpty()) {
+    throw createLocalizedError(
+      settings.language,
+      "error.invalidCompressedImage",
+    );
+  }
   clipboard.writeImage(clipboardImage);
 }
 
@@ -297,7 +314,10 @@ function documentLibrarySnapshot() {
     recent: [],
   };
   return {
-    instant: { ...instantDocument },
+    instant: {
+      ...instantDocument,
+      name: t("instant.title"),
+    },
     ...library,
   };
 }
@@ -334,10 +354,10 @@ async function openDocumentPaths(
 
 async function openMarkdownDialog() {
   const result = await dialog.showOpenDialog(mainWindow, {
-    title: "打开 Markdown",
+    title: t("dialog.openMarkdown"),
     filters: [
       {
-        name: "Markdown 文档",
+        name: t("dialog.markdownDocument"),
         extensions: ["md", "markdown", "mdown"],
       },
     ],
@@ -352,19 +372,21 @@ async function openMarkdownDialog() {
 
 async function saveInstantDocument({ source, suggestedName } = {}) {
   const markdownSource = String(source || "");
-  if (!markdownSource.trim()) throw new Error("即时内容为空，无法保存");
-  const safeName = String(suggestedName || "即时分享.md")
+  if (!markdownSource.trim()) {
+    throw createLocalizedError(settings.language, "error.emptyInstant");
+  }
+  const safeName = String(suggestedName || t("file.instantMarkdown"))
     .replace(/[\\/:*?"<>|]/g, " ")
     .trim();
   const defaultName = /\.m(?:d|arkdown|down)$/i.test(safeName)
     ? safeName
-    : `${safeName || "即时分享"}.md`;
+    : `${safeName || t("file.instantName")}.md`;
   const result = await dialog.showSaveDialog(mainWindow, {
-    title: "保存 Markdown",
+    title: t("dialog.saveMarkdown"),
     defaultPath: defaultName,
     filters: [
       {
-        name: "Markdown 文档",
+        name: t("dialog.markdownDocument"),
         extensions: ["md"],
       },
     ],
@@ -415,8 +437,8 @@ function showHud(message, tone = "success", duration = 1500) {
   if (hudWindow && !hudWindow.isDestroyed()) hudWindow.destroy();
 
   const display = screen.getDisplayNearestPoint(screen.getCursorScreenPoint());
-  const width = 390;
-  const height = 66;
+  const width = settings.language === "en" ? 460 : 390;
+  const height = settings.language === "en" ? 74 : 66;
   const x = Math.round(
     display.workArea.x + (display.workArea.width - width) / 2,
   );
@@ -452,7 +474,7 @@ function showHud(message, tone = "success", duration = 1500) {
   });
   hudWindow.loadURL(
     dataUrl(`<!doctype html>
-      <html lang="zh-CN">
+      <html lang="${normalizeLanguage(settings.language)}">
         <head>
           <meta charset="utf-8">
           <meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'unsafe-inline';">
@@ -492,14 +514,14 @@ function showHud(message, tone = "success", duration = 1500) {
 
 async function quickGenerate() {
   if (quickGenerationRunning) {
-    showHud("正在生成，请稍候", "info");
+    showHud(t("hud.busy"), "info");
     return { status: "busy", pageCount: 0 };
   }
 
   const payload = readClipboardPayload();
   const source = sourceFromClipboard(payload);
   if (!source.trim()) {
-    showHud("剪贴板中没有可生成的文字", "error", 2200);
+    showHud(t("hud.clipboardEmpty"), "error", 2200);
     return { status: "empty", pageCount: 0 };
   }
 
@@ -516,7 +538,7 @@ async function quickGenerate() {
   });
 
   quickGenerationRunning = true;
-  showHud("正在生成长图…", "info", 5000);
+  showHud(t("hud.generating"), "info", 5000);
   try {
     const record = await renderPreview({
       source,
@@ -530,10 +552,17 @@ async function quickGenerate() {
         source: instantDocument.source,
         sourceFormat: instantDocument.sourceFormat,
         html: payload.html,
-        message: `内容已拆成 ${record.pages.length} 页，请选择需要复制的页面`,
+        message: formatMultiPageMessage(
+          settings.language,
+          record.pages.length,
+        ),
       });
       showHud(
-        `内容已拆成 ${record.pages.length} 页，请在窗口中选择`,
+        formatMultiPageMessage(
+          settings.language,
+          record.pages.length,
+          true,
+        ),
         "info",
         2600,
       );
@@ -545,11 +574,15 @@ async function quickGenerate() {
 
     const images = await captureRecord(record);
     await copyPageImage(record, 0, images[0]);
-    showHud("图片已复制，可 Command+V", "success");
+    showHud(t("hud.copied"), "success");
     return { status: "copied", pageCount: 1 };
   } catch (error) {
     console.error("Quick generation failed:", error);
-    showHud(`生成失败：${error.message}`, "error", 3000);
+    showHud(
+      t("toast.generateFailed", { message: error.message }),
+      "error",
+      3000,
+    );
     return {
       status: "failed",
       pageCount: 0,
@@ -563,12 +596,12 @@ async function quickGenerate() {
 function rebuildTrayMenu() {
   if (!tray) return;
   const shortcutLabel = settings.shortcutEnabled
-    ? `快捷生成（${settings.accelerator.replaceAll("+", " + ")}）`
-    : "快捷生成";
+    ? `${t("menu.quickGenerate")}（${settings.accelerator.replaceAll("+", " + ")}）`
+    : t("menu.quickGenerate");
   tray.setContextMenu(
     Menu.buildFromTemplate([
       {
-        label: "打开管理窗口",
+        label: t("menu.openManager"),
         click: showMainWindow,
       },
       {
@@ -577,7 +610,7 @@ function rebuildTrayMenu() {
       },
       { type: "separator" },
       {
-        label: "启用全局快捷键",
+        label: t("menu.enableShortcut"),
         type: "checkbox",
         checked: settings.shortcutEnabled,
         click: async (menuItem) => {
@@ -587,14 +620,14 @@ function rebuildTrayMenu() {
           });
           if (!result.ok) {
             menuItem.checked = settings.shortcutEnabled;
-            showHud("快捷键注册失败，可能已被其他应用占用", "error", 2600);
+            showHud(t("hud.shortcutConflict"), "error", 2600);
           }
           mainWindow?.webContents.send("settings:changed", settings);
         },
       },
       { type: "separator" },
       {
-        label: "退出",
+        label: t("menu.quit"),
         accelerator: "Command+Q",
         click: () => app.quit(),
       },
@@ -624,22 +657,30 @@ async function registerAccelerator(accelerator) {
 
 async function applyShortcutSettings(nextInput) {
   const next = normalizeSettings(nextInput);
-  if (next.shortcutEnabled) {
+  const shortcutChanged =
+    next.shortcutEnabled !== settings.shortcutEnabled ||
+    next.accelerator !== settings.accelerator;
+  if (shortcutChanged && next.shortcutEnabled) {
     const result = await registerAccelerator(next.accelerator);
     if (!result.ok) {
-      rebuildTrayMenu();
+      settings = await saveSettings(settingsPath, {
+        ...next,
+        shortcutEnabled: settings.shortcutEnabled,
+        accelerator: settings.accelerator,
+      });
+      rebuildNativeMenus();
       return {
         ...result,
         settings,
       };
     }
-  } else if (registeredAccelerator) {
+  } else if (shortcutChanged && registeredAccelerator) {
     globalShortcut.unregister(registeredAccelerator);
     registeredAccelerator = "";
   }
 
   settings = await saveSettings(settingsPath, next);
-  rebuildTrayMenu();
+  rebuildNativeMenus();
   return { ok: true, settings };
 }
 
@@ -655,16 +696,16 @@ function createDockMenu() {
   app.dock.setMenu(
     Menu.buildFromTemplate([
       {
-        label: "打开管理窗口",
+        label: t("menu.openManager"),
         click: showMainWindow,
       },
       {
-        label: "用剪贴板快速生成",
+        label: t("menu.quickGenerateClipboard"),
         click: quickGenerate,
       },
       { type: "separator" },
       {
-        label: "退出 MarkShot",
+        label: t("menu.quitMarkShot"),
         click: () => app.quit(),
       },
     ]),
@@ -677,50 +718,56 @@ function createApplicationMenu() {
       {
         label: "MarkShot",
         submenu: [
-          { role: "about" },
+          { label: t("menu.about"), role: "about" },
           { type: "separator" },
-          { role: "hide" },
-          { role: "hideOthers" },
-          { role: "unhide" },
+          { label: t("menu.hide"), role: "hide" },
+          { label: t("menu.hideOthers"), role: "hideOthers" },
+          { label: t("menu.showAll"), role: "unhide" },
           { type: "separator" },
-          { role: "quit" },
+          { label: t("menu.quitMarkShot"), role: "quit" },
         ],
       },
       {
-        label: "文件",
+        label: t("menu.file"),
         submenu: [
           {
-            label: "打开 Markdown…",
+            label: t("menu.openMarkdown"),
             accelerator: "Command+O",
             click: () => openMarkdownDialog().catch(console.error),
           },
           { type: "separator" },
-          { role: "close" },
+          { label: t("menu.close"), role: "close" },
         ],
       },
       {
-        label: "编辑",
+        label: t("menu.edit"),
         submenu: [
-          { role: "undo" },
-          { role: "redo" },
+          { label: t("menu.undo"), role: "undo" },
+          { label: t("menu.redo"), role: "redo" },
           { type: "separator" },
-          { role: "cut" },
-          { role: "copy" },
-          { role: "paste" },
-          { role: "selectAll" },
+          { label: t("menu.cut"), role: "cut" },
+          { label: t("menu.copy"), role: "copy" },
+          { label: t("menu.paste"), role: "paste" },
+          { label: t("menu.selectAll"), role: "selectAll" },
         ],
       },
       {
-        label: "窗口",
+        label: t("menu.window"),
         submenu: [
-          { role: "minimize" },
-          { role: "zoom" },
+          { label: t("menu.minimize"), role: "minimize" },
+          { label: t("menu.zoom"), role: "zoom" },
           { type: "separator" },
-          { role: "front" },
+          { label: t("menu.bringAllToFront"), role: "front" },
         ],
       },
     ]),
   );
+}
+
+function rebuildNativeMenus() {
+  rebuildTrayMenu();
+  createDockMenu();
+  createApplicationMenu();
 }
 
 function createMainWindow() {
@@ -773,10 +820,14 @@ function registerIpc() {
 
   ipcMain.handle("page:copy", async (_event, { revision, pageIndex }) => {
     const record = renderRecords.get(revision);
-    if (!record) throw new Error("预览已过期，请重新生成");
+    if (!record) {
+      throw createLocalizedError(settings.language, "error.previewExpired");
+    }
     const images = await captureRecord(record);
     const image = images[pageIndex];
-    if (!image) throw new Error("没有找到对应页面");
+    if (!image) {
+      throw createLocalizedError(settings.language, "error.pageMissing");
+    }
     await copyPageImage(record, pageIndex, image);
     return {
       ok: true,
@@ -789,23 +840,27 @@ function registerIpc() {
     "page:export",
     async (_event, { revision, pageIndex, suggestedName }) => {
       const record = renderRecords.get(revision);
-      if (!record) throw new Error("预览已过期，请重新生成");
+      if (!record) {
+        throw createLocalizedError(settings.language, "error.previewExpired");
+      }
       const fallbackName = suggestedFileName(
         record.title,
         pageIndex,
         record.pages.length,
       );
       const result = await dialog.showSaveDialog(mainWindow, {
-        title: "导出长图",
+        title: t("dialog.exportImage"),
         defaultPath: suggestedName || fallbackName,
-        filters: [{ name: "PNG 图片", extensions: ["png"] }],
+        filters: [{ name: t("dialog.pngImage"), extensions: ["png"] }],
         properties: ["createDirectory", "showOverwriteConfirmation"],
       });
       if (result.canceled || !result.filePath) return { canceled: true };
 
       const images = await captureRecord(record);
       const image = images[pageIndex];
-      if (!image) throw new Error("没有找到对应页面");
+      if (!image) {
+        throw createLocalizedError(settings.language, "error.pageMissing");
+      }
       const png = await optimizedPagePng(record, pageIndex, image);
       await fs.writeFile(result.filePath, png);
       return { canceled: false, path: result.filePath };
@@ -905,6 +960,7 @@ if (gotSingleInstanceLock) {
     settings = await loadSettings(settingsPath);
     documentLibrary = new DocumentLibrary({
       recentPath: recentDocumentsPath,
+      getLanguage: () => settings.language,
       onEvent: (payload) => {
         sendToMainWindow("documents:changed", {
           ...payload,
@@ -931,8 +987,8 @@ if (gotSingleInstanceLock) {
       if (!result.ok) {
         settings.shortcutEnabled = false;
         settings = await saveSettings(settingsPath, settings);
-        rebuildTrayMenu();
-        showHud("默认快捷键注册失败，请在设置中重新选择", "error", 3000);
+        rebuildNativeMenus();
+        showHud(t("hud.defaultShortcutConflict"), "error", 3000);
       }
     }
   });
