@@ -95,7 +95,7 @@ test("the two output profiles enforce their own layout", () => {
     theme: "light",
     background: "plain",
     showFooter: true,
-    width: 1440,
+    width: 1600,
     fontSize: 32,
     padding: 48,
   });

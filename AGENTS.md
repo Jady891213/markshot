@@ -38,7 +38,7 @@
 - Show the current global shortcut in the app title bar immediately left of a settings icon. Configure it in an in-app modal opened by that icon; do not expose a separate Hide Window button.
 - Keep `contextIsolation: true`, `nodeIntegration: false`, and expose only the narrow preload API.
 - The default quick action is `Command+Option+T` with the mobile profile.
-- Expose only two fixed output profiles: mobile at 1080 px with 32 px body text and 40 px canvas padding, and desktop at 1440 px with 32 output pixels (equivalent to a conventional 16 px reader at 2x) and 48 px canvas padding. Treat desktop as a wide reading layout instead of a stretched mobile card. Width, font size, and padding are profile-owned and are not user-editable.
+- Expose only two fixed output profiles: mobile at 1080 px with 32 px body text and 40 px canvas padding, and desktop at 1600 px with 32 output pixels (equivalent to a conventional 16 px reader at 2x) and 48 px canvas padding. Show desktop at a fixed 0.5 preview scale, producing an A4-like 800 px reading surface; larger windows add side whitespace instead of enlarging the document. Only shrink further when the available viewport is narrower than 800 px. Treat desktop as a wide reading layout instead of a stretched mobile card. Width, font size, and padding are profile-owned and are not user-editable.
 - Use a neutral light-gray fenced-code container in the light theme and a medium charcoal container in the dark theme. Avoid near-black code blocks unless a future named theme explicitly requires them.
 - A quick action must not overwrite the clipboard until a complete single-page image has been generated.
 - Content above 14,000 px is paginated. The quick action opens the manager for page selection and keeps the source clipboard intact.
@@ -70,7 +70,7 @@ After validation, replace the sibling `MarkShot.app` and remove the Forge `out/`
 - Test headings, nested lists, tasks, tables, blockquotes, footnotes, code highlighting, links, images, and unsafe HTML removal.
 - Test file selection, Command+O, multi-file drag-and-drop, Open With, repeated-path deduplication, recent ordering, file refresh, and missing-file recovery.
 - Verify Immediate and Reading restore their own active document, view, scroll position, and heading; Preview, Split, and Source must remain read-only.
-- Verify mobile 1080 px and desktop 1440 px; legacy or custom profile inputs must normalize to mobile.
+- Verify mobile 1080 px and desktop 1600 px; desktop preview stays at 800 px and does not grow with the window, while legacy or custom profile inputs normalize to mobile.
 - Verify the global shortcut while another app has focus, successful clipboard image paste, multi-page fallback, shortcut conflict handling, and no disk output.
 - On every manual or automated Electron run, quit the app and verify that no Electron Helper process remains. If the user expects the resident process to be ready after handoff, relaunch the verified final `.app` intentionally and report that it was left running.
 - Mark disposable files with `TMP to delete` and remove them before handoff.

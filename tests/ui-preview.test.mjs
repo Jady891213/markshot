@@ -25,3 +25,14 @@ test("mobile preview adds device chrome without changing captured HTML", () => {
   assert.match(styles, /\.phone-preview\s*\{/);
   assert.match(styles, /\.phone-screen\s*\{/);
 });
+
+test("desktop preview stays at a fixed 800 px reading width", () => {
+  assert.match(
+    script,
+    /const maximumScale = record\.profile === "desktop" \? 0\.5 : 1;/,
+  );
+  assert.match(
+    script,
+    /const scale = Math\.min\(maximumScale, availableWidth \/ record\.width\);/,
+  );
+});

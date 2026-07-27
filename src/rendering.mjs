@@ -26,7 +26,7 @@ export const OUTPUT_PROFILES = Object.freeze({
   }),
   desktop: Object.freeze({
     label: "PC",
-    width: 1440,
+    width: 1600,
     fontSize: 32,
     padding: 48,
   }),

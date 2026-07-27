@@ -206,7 +206,7 @@ function updateStatus() {
     source: "源码模式",
   }[currentView];
   elements.statusProfile.textContent = `${PROFILE_LABELS[profile]} · ${
-    profile === "desktop" ? "1440" : "1080"
+    profile === "desktop" ? "1600" : "1080"
   } px`;
   elements.statusPages.textContent = currentPreview?.pages?.length
     ? `${currentPreview.pages.length} 页图片`
@@ -548,6 +548,7 @@ function mountFrame(host, preview) {
     scrollContainer,
     width: preview.options.width,
     height: preview.totalHeight,
+    profile: preview.options.profile,
     scale: 1,
     documentUrl,
   });
@@ -596,7 +597,8 @@ function updateFrameScale(host) {
     240,
     record.scrollContainer?.clientWidth || record.host.clientWidth,
   );
-  const scale = Math.min(1, availableWidth / record.width);
+  const maximumScale = record.profile === "desktop" ? 0.5 : 1;
+  const scale = Math.min(maximumScale, availableWidth / record.width);
   record.scale = scale;
   record.shell.style.width = `${Math.round(record.width * scale)}px`;
   record.shell.style.height = `${Math.ceil(record.height * scale)}px`;
