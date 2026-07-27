@@ -618,10 +618,82 @@ svg {
   margin: 0 auto;
 }
 
+.frame-host.mobile-frame-host {
+  display: flex;
+  justify-content: center;
+  padding: 4px 0 18px;
+}
+
+.phone-preview {
+  position: relative;
+  width: min(430px, 100%);
+  height: min(760px, calc(100vh - 226px));
+  min-height: 560px;
+  padding: 28px 10px 24px;
+  overflow: hidden;
+  background:
+    linear-gradient(145deg, #252b35 0%, #0d1118 48%, #252a33 100%);
+  border: 1px solid #05070a;
+  border-radius: 48px;
+  box-shadow:
+    0 26px 60px rgba(15, 23, 42, 0.22),
+    inset 0 0 0 1px rgba(255, 255, 255, 0.12);
+}
+
+.phone-island {
+  position: absolute;
+  z-index: 2;
+  top: 9px;
+  left: 50%;
+  width: 96px;
+  height: 18px;
+  background: #050608;
+  border-radius: 999px;
+  transform: translateX(-50%);
+  pointer-events: none;
+}
+
+.phone-screen {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  overflow: auto;
+  overscroll-behavior: contain;
+  background: #fff;
+  border-radius: 31px;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(100, 116, 139, 0.34) transparent;
+}
+
+.phone-screen::-webkit-scrollbar {
+  width: 5px;
+}
+
+.phone-screen::-webkit-scrollbar-thumb {
+  background: rgba(100, 116, 139, 0.34);
+  border-radius: 999px;
+}
+
+.phone-home-indicator {
+  position: absolute;
+  bottom: 8px;
+  left: 50%;
+  width: 104px;
+  height: 4px;
+  background: rgba(255, 255, 255, 0.76);
+  border-radius: 999px;
+  transform: translateX(-50%);
+  pointer-events: none;
+}
+
 .frame-shell {
   position: relative;
   margin: 0 auto;
   overflow: hidden;
+}
+
+.phone-screen .frame-shell {
+  margin: 0;
 }
 
 .document-frame {
@@ -632,6 +704,17 @@ svg {
   border: 0;
   transform-origin: top left;
   user-select: text;
+}
+
+.split-view .phone-preview {
+  width: min(360px, 100%);
+  height: min(680px, calc(100vh - 246px));
+  min-height: 500px;
+  border-radius: 40px;
+}
+
+.split-view .phone-screen {
+  border-radius: 25px;
 }
 
 .empty-state {
@@ -1109,5 +1192,12 @@ svg {
   .render-stage {
     padding-right: 28px;
     padding-left: 28px;
+  }
+}
+
+@media (max-height: 760px) {
+  .phone-preview {
+    height: calc(100vh - 196px);
+    min-height: 450px;
   }
 }

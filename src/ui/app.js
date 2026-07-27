@@ -114,7 +114,7 @@ function saveCurrentState() {
   if (!activeDocumentId) return;
   const state = currentState();
   state.view = currentView;
-  state.scrollTop = elements.contentScroll.scrollTop;
+  state.scrollTop = activeScrollContainer().scrollTop;
   const activeOutline = elements.outlineList.querySelector("button.active");
   state.activeHeading = Number(activeOutline?.dataset.outlineIndex || 0);
 }
@@ -123,9 +123,18 @@ function restoreCurrentScroll() {
   const state = currentState();
   pendingScrollRestore = state.scrollTop || 0;
   requestAnimationFrame(() => {
-    elements.contentScroll.scrollTop = pendingScrollRestore;
+    activeScrollContainer().scrollTop = pendingScrollRestore;
     requestAnimationFrame(updateActiveOutline);
   });
+}
+
+function activeFrameRecord() {
+  if (currentView === "source") return undefined;
+  return frameRecords.get(activeFrameHost());
+}
+
+function activeScrollContainer() {
+  return activeFrameRecord()?.scrollContainer || elements.contentScroll;
 }
 
 function currentRenderOptions() {
@@ -416,6 +425,8 @@ function scheduleRender(delay = 260) {
 function clearPreview() {
   currentPreview = undefined;
   selectedPageIndex = 0;
+  releaseFrame(elements.previewHost);
+  releaseFrame(elements.splitHost);
   elements.previewHost.replaceChildren();
   elements.splitHost.replaceChildren();
   elements.emptyState.hidden = false;
@@ -490,23 +501,63 @@ function mountPreviewFrames() {
 }
 
 function mountFrame(host, preview) {
+  releaseFrame(host);
+  const isMobile = preview.options.profile === "mobile";
+  host.classList.toggle("mobile-frame-host", isMobile);
+  host.classList.toggle("desktop-frame-host", !isMobile);
   const shell = document.createElement("div");
   shell.className = "frame-shell";
   const frame = document.createElement("iframe");
   frame.className = "document-frame";
   frame.title = "Markdown 格式预览";
   frame.setAttribute("sandbox", "allow-same-origin");
-  frame.srcdoc = preview.previewHtml;
+  frame.style.width = `${preview.options.width}px`;
+  frame.style.height = `${preview.totalHeight}px`;
+  const documentUrl = URL.createObjectURL(
+    new Blob([preview.previewHtml], { type: "text/html;charset=utf-8" }),
+  );
+  frame.src = documentUrl;
   shell.append(frame);
-  host.replaceChildren(shell);
+  let scrollContainer;
+  if (isMobile) {
+    const phone = document.createElement("div");
+    phone.className = "phone-preview";
+    phone.setAttribute("aria-label", "移动端预览设备");
+
+    const island = document.createElement("div");
+    island.className = "phone-island";
+    island.setAttribute("aria-hidden", "true");
+
+    scrollContainer = document.createElement("div");
+    scrollContainer.className = "phone-screen";
+    scrollContainer.append(shell);
+
+    const homeIndicator = document.createElement("div");
+    homeIndicator.className = "phone-home-indicator";
+    homeIndicator.setAttribute("aria-hidden", "true");
+
+    phone.append(island, scrollContainer, homeIndicator);
+    host.replaceChildren(phone);
+  } else {
+    host.replaceChildren(shell);
+  }
   frameRecords.set(host, {
     host,
     shell,
     frame,
+    scrollContainer,
     width: preview.options.width,
     height: preview.totalHeight,
     scale: 1,
+    documentUrl,
   });
+  if (scrollContainer) {
+    scrollContainer.addEventListener("scroll", () => {
+      if (activeFrameHost() !== host) return;
+      currentState().scrollTop = scrollContainer.scrollTop;
+      updateActiveOutline();
+    });
+  }
   frame.addEventListener(
     "load",
     () => {
@@ -523,22 +574,32 @@ function mountFrame(host, preview) {
         (currentView === "split" && host === elements.splitHost)
       ) {
         buildOutline(host);
+        restoreCurrentScroll();
       }
     },
     { once: true },
   );
 }
 
+function releaseFrame(host) {
+  const record = frameRecords.get(host);
+  if (!record) return;
+  frameRecords.delete(host);
+  if (record.documentUrl) URL.revokeObjectURL(record.documentUrl);
+  host.classList.remove("mobile-frame-host", "desktop-frame-host");
+}
+
 function updateFrameScale(host) {
   const record = frameRecords.get(host);
   if (!record || !record.host.isConnected) return;
-  const availableWidth = Math.max(240, record.host.clientWidth);
+  const availableWidth = Math.max(
+    240,
+    record.scrollContainer?.clientWidth || record.host.clientWidth,
+  );
   const scale = Math.min(1, availableWidth / record.width);
   record.scale = scale;
   record.shell.style.width = `${Math.round(record.width * scale)}px`;
   record.shell.style.height = `${Math.ceil(record.height * scale)}px`;
-  record.frame.style.width = `${record.width}px`;
-  record.frame.style.height = `${record.height}px`;
   record.frame.style.transform = `scale(${scale})`;
 }
 
@@ -597,6 +658,9 @@ function emptyOutline(message) {
 function targetScrollTop(target) {
   const record = frameRecords.get(target.host);
   if (!record) return 0;
+  if (record.scrollContainer) {
+    return target.heading.offsetTop * record.scale;
+  }
   const hostRect = target.host.getBoundingClientRect();
   const scrollRect = elements.contentScroll.getBoundingClientRect();
   const hostTop =
@@ -614,7 +678,7 @@ function scrollToHeading(index) {
   const target = outlineTargets[index];
   if (!target) return;
   currentState().activeHeading = index;
-  elements.contentScroll.scrollTo({
+  activeScrollContainer().scrollTo({
     top: Math.max(0, targetScrollTop(target) - 22),
     behavior: "smooth",
   });
@@ -622,7 +686,7 @@ function scrollToHeading(index) {
 
 function updateActiveOutline() {
   if (!outlineTargets.length) return;
-  const threshold = elements.contentScroll.scrollTop + 72;
+  const threshold = activeScrollContainer().scrollTop + 72;
   let activeIndex = 0;
   for (const target of outlineTargets) {
     if (targetScrollTop(target) <= threshold) activeIndex = target.index;
@@ -955,6 +1019,7 @@ elements.accelerator.addEventListener("keydown", (event) => {
 elements.applyShortcut.addEventListener("click", applyShortcut);
 
 elements.contentScroll.addEventListener("scroll", () => {
+  if (activeScrollContainer() !== elements.contentScroll) return;
   const state = currentState();
   state.scrollTop = elements.contentScroll.scrollTop;
   updateActiveOutline();

@@ -14,6 +14,8 @@
 - Image generation is memory-first. Do not create image files unless the user explicitly chooses Export.
 - Preserve UTF-8 and UTF-16LE/BE decoding with and without BOM.
 - The normal preview is selectable DOM rendered from the same complete HTML and theme CSS used by image capture. Create NativeImage objects only when the user chooses Copy, Export, or Quick Generate.
+- Load preview documents from an in-memory Blob URL at their exact output width. The UI CSP must keep inline styles enabled for the sandboxed preview frame while scripts remain restricted to `self`; otherwise the shared theme CSS is silently blocked.
+- Show the mobile profile inside a fixed phone-shaped preview with an independently scrollable screen. Device chrome is preview-only and must never appear in copied or exported images. The desktop profile remains a scaled document canvas without device chrome.
 - Keep copy and export as one split action in the operation bar: the main button copies and its menu exports. For multi-page output, the compact page selector chooses the single page acted upon.
 - Use the macOS tray title `MS` with the system monospaced font and an empty image. This is intentionally text-only so the status item follows macOS light/dark menu-bar contrast and cannot collapse into an unreadable template-image blob.
 - Clicking the menu-bar status icon opens its context menu; it must not open the management window directly.
