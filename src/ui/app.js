@@ -161,6 +161,12 @@ function updateShortcutLabel() {
     : "快捷键已关闭";
 }
 
+function syncReaderPresentation() {
+  const options = currentRenderOptions();
+  elements.contentScroll.dataset.readerTheme = options.theme;
+  elements.contentScroll.dataset.readerProfile = options.profile;
+}
+
 function applySettingsToControls(next) {
   settings = { ...next };
   selectValue(elements.profile, settings.profile);
@@ -170,6 +176,7 @@ function applySettingsToControls(next) {
   elements.shortcutEnabled.checked = settings.shortcutEnabled;
   elements.accelerator.value = settings.accelerator;
   shortcutDraft = settings.accelerator;
+  syncReaderPresentation();
   updateShortcutLabel();
   updateStatus();
 }
@@ -953,6 +960,7 @@ elements.toggleStyle.addEventListener("click", () => {
 [...elements.profile, ...elements.theme, ...elements.background].forEach(
   (control) => {
     control.addEventListener("change", () => {
+      syncReaderPresentation();
       persistSettings();
       scheduleRender();
     });

@@ -36,3 +36,19 @@ test("desktop preview stays at a fixed 800 px reading width", () => {
     /const scale = Math\.min\(maximumScale, availableWidth \/ record\.width\);/,
   );
 });
+
+test("copy and export split action stays seamless and equal-height", () => {
+  assert.match(styles, /\.share-split\s*\{[^}]*height: 32px;/s);
+  assert.match(
+    styles,
+    /\.share-split > \.button\s*\{[^}]*height: 32px;[^}]*padding-top: 0;[^}]*padding-bottom: 0;/s,
+  );
+  assert.match(
+    styles,
+    /\.share-split > \.button:first-child\s*\{[^}]*border-right: 0;/s,
+  );
+  assert.match(
+    styles,
+    /\.share-split \.share-toggle\s*\{[^}]*border-left: 0;/s,
+  );
+});

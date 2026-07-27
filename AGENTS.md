@@ -18,6 +18,7 @@
 - Load preview documents from an in-memory Blob URL at their exact output width. The UI CSP must keep inline styles enabled for the sandboxed preview frame while scripts remain restricted to `self`; otherwise the shared theme CSS is silently blocked.
 - Show the mobile profile inside a fixed phone-shaped preview with an independently scrollable screen. Device chrome is preview-only and must never appear in copied or exported images. The desktop profile remains a scaled document canvas without device chrome.
 - Keep copy and export as one split action in the operation bar: the main button copies and its menu exports. For multi-page output, the compact page selector chooses the single page acted upon.
+- Keep both halves of the copy/export split action exactly 32 px high with one continuous primary background and no visible internal divider.
 - Use the macOS tray title `MS` with the system monospaced font and an empty image. This is intentionally text-only so the status item follows macOS light/dark menu-bar contrast and cannot collapse into an unreadable template-image blob.
 - Clicking the menu-bar status icon opens its context menu; it must not open the management window directly.
 - Reopening MarkShot from its `.app` icon activates and shows the management window.
@@ -32,6 +33,9 @@
 - The optional image title is gated by a local switch and is never persisted. The MarkShot footer switch is a persisted render setting used by both managed preview/export and quick generation.
 - Plain and soft backgrounds must be visibly distinct in the shared final render CSS; preview and exported/copied images must use that same render document.
 - Keep theme, optional image title, and image footer in one continuous style group, in that order. Label the footer switch `图片页脚`.
+- Render image title, image footer, and shortcut enablement as custom sliding switches rather than native checkbox squares.
+- When the dark theme is selected, make the desktop document stage and the outline/style panel one continuous dark reader surface with no light outer ring. Keep the fixed desktop reading width and font scale unchanged.
+- Keep the Immediate input and read-only Source views on the same monospace font size and line height.
 - Keep Clear and Paste at the left of the transparent immediate footer. Keep the secondary text action Save Document at its right; saving writes UTF-8 Markdown through a native dialog, opens it in Reading, and clears Immediate only after success.
 - Keep the top-left brand to a single `MarkShot` line without a status subtitle.
 - The background choices are None, Plain, and Soft. None removes canvas padding plus card background decoration so the output is only the themed Markdown content surface.
@@ -53,6 +57,8 @@ npm run check
 npm test
 npm start
 ```
+
+For small CSS, copy, spacing, or alignment-only changes, rebuild the local `.app` and perform focused launch/UI smoke validation instead of repeatedly running the full unit suite. Run targeted or full automated tests when the change affects rendering output, clipboard behavior, file handling, state, data structures, or other functional paths.
 
 Build only the Apple Silicon `.app`:
 

@@ -14,6 +14,9 @@
   --right-width: 252px;
   --header-height: 60px;
   --operation-height: 50px;
+  --source-font-size: 13px;
+  --source-line-height: 1.72;
+  --source-font-family: "SFMono-Regular", Consolas, monospace;
   font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "PingFang SC",
     "Hiragino Sans GB", "Microsoft YaHei", sans-serif;
 }
@@ -317,16 +320,25 @@ svg {
 
 .share-split {
   position: relative;
+  height: 32px;
+}
+
+.share-split > .button {
+  height: 32px;
+  min-height: 32px;
+  padding-top: 0;
+  padding-bottom: 0;
 }
 
 .share-split > .button:first-child {
+  border-right: 0;
   border-radius: 8px 0 0 8px;
 }
 
 .share-split .share-toggle {
   min-width: 28px;
-  padding: 7px 8px;
-  border-left-color: rgba(255, 255, 255, 0.24);
+  padding: 0 8px;
+  border-left: 0;
   border-radius: 0 8px 8px 0;
 }
 
@@ -400,7 +412,9 @@ svg {
   background: white;
   border: 0;
   outline: none;
-  font: 13px/1.72 "SFMono-Regular", Consolas, monospace;
+  font-family: var(--source-font-family);
+  font-size: var(--source-font-size);
+  line-height: var(--source-line-height);
   user-select: text;
 }
 
@@ -588,6 +602,17 @@ svg {
   background: white;
 }
 
+.content-scroll[data-reader-theme="dark"] {
+  --line: #2a3443;
+  --line-soft: #202a38;
+  --text: #e8edf5;
+  --muted: #9ba8bb;
+  --accent: #75a7ff;
+  --accent-soft: #1d3152;
+  color: var(--text);
+  background: #0b1018;
+}
+
 .workbench {
   min-width: 0;
   min-height: 100%;
@@ -610,6 +635,10 @@ svg {
   min-height: calc(100vh - 138px);
   padding: 34px 42px 56px;
   background: white;
+}
+
+.content-scroll[data-reader-profile="desktop"] .render-stage {
+  padding: 0 24px 48px;
 }
 
 .frame-host {
@@ -772,7 +801,9 @@ svg {
   white-space: pre-wrap;
   overflow-wrap: anywhere;
   outline: none;
-  font: 12px/1.72 "SFMono-Regular", Consolas, monospace;
+  font-family: var(--source-font-family);
+  font-size: var(--source-font-size);
+  line-height: var(--source-line-height);
   user-select: text;
 }
 
@@ -804,6 +835,27 @@ svg {
   align-self: start;
   min-height: calc(100vh - 138px);
   background: rgba(255, 255, 255, 0.96);
+}
+
+.content-scroll[data-reader-theme="dark"] .render-stage,
+.content-scroll[data-reader-theme="dark"] .split-preview,
+.content-scroll[data-reader-theme="dark"] .right-panel {
+  background: #0b1018;
+}
+
+.content-scroll[data-reader-theme="dark"] .source-pane,
+.content-scroll[data-reader-theme="dark"] .source-view {
+  color: var(--text);
+  background: #0f1620;
+  border-color: var(--line);
+}
+
+.content-scroll[data-reader-theme="dark"] .source-pane header,
+.content-scroll[data-reader-theme="dark"] .source-view header,
+.content-scroll[data-reader-theme="dark"] .source-pane pre,
+.content-scroll[data-reader-theme="dark"] .source-view pre {
+  color: var(--text);
+  border-color: var(--line);
 }
 
 .right-content {
@@ -853,6 +905,14 @@ svg {
 
 .outline-list button:hover {
   color: #41506a;
+}
+
+.content-scroll[data-reader-theme="dark"] .outline-list button {
+  color: #9ba8bb;
+}
+
+.content-scroll[data-reader-theme="dark"] .outline-list button:hover {
+  color: #dce6f5;
 }
 
 .outline-list button.active {
@@ -930,6 +990,19 @@ svg {
   box-shadow: 0 0 0 1px #a9bfff inset;
 }
 
+.content-scroll[data-reader-theme="dark"] .choice-card > span {
+  color: var(--text);
+  background: #141b26;
+  border-color: #2a3443;
+}
+
+.content-scroll[data-reader-theme="dark"] .choice-card input:checked + span {
+  color: #a9c8ff;
+  background: #1c2b43;
+  border-color: #547fca;
+  box-shadow: 0 0 0 1px #345c9f inset;
+}
+
 .choice-card b,
 .choice-card small {
   display: block;
@@ -967,9 +1040,47 @@ svg {
 }
 
 .switch-row input[type="checkbox"] {
+  position: relative;
+  flex: 0 0 auto;
   width: 34px;
   height: 20px;
-  accent-color: var(--accent);
+  margin: 0;
+  appearance: none;
+  -webkit-appearance: none;
+  background: #c7d0dc;
+  border: 1px solid #b7c1ce;
+  border-radius: 999px;
+  outline: none;
+  cursor: pointer;
+  transition:
+    background 150ms ease,
+    border-color 150ms ease;
+}
+
+.switch-row input[type="checkbox"]::after {
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 14px;
+  height: 14px;
+  content: "";
+  background: white;
+  border-radius: 50%;
+  box-shadow: 0 1px 3px rgba(15, 23, 42, 0.24);
+  transition: transform 150ms ease;
+}
+
+.switch-row input[type="checkbox"]:checked {
+  background: var(--accent);
+  border-color: var(--accent);
+}
+
+.switch-row input[type="checkbox"]:checked::after {
+  transform: translateX(14px);
+}
+
+.switch-row input[type="checkbox"]:focus-visible {
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 25%, transparent);
 }
 
 .title-input {
@@ -982,6 +1093,12 @@ svg {
   border-radius: 7px;
   outline: none;
   font-size: 11px;
+}
+
+.content-scroll[data-reader-theme="dark"] .title-input {
+  color: var(--text);
+  background: #141b26;
+  border-color: #2a3443;
 }
 
 .statusbar {
