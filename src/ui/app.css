@@ -3,6 +3,9 @@
   --app-bg: #eef2f6;
   --panel: #ffffff;
   --panel-muted: #f7f9fb;
+  --sidebar-bg: #f7f8fa;
+  --preview-stage: #eef1f5;
+  --right-bg: #fbfcfd;
   --line: #dfe5ec;
   --line-soft: #edf1f5;
   --text: #1d2735;
@@ -169,6 +172,7 @@ svg {
   align-items: center;
   gap: 2px;
   padding: 6px 8px;
+  background: #f1f4f7;
   border-right: 1px solid var(--line);
 }
 
@@ -376,7 +380,7 @@ svg {
   min-width: 0;
   min-height: 0;
   overflow: hidden;
-  background: var(--panel);
+  background: var(--sidebar-bg);
   border-right: 1px solid var(--line);
 }
 
@@ -397,7 +401,7 @@ svg {
   padding: 16px;
   resize: none;
   color: #2b3749;
-  background: white;
+  background: var(--sidebar-bg);
   border: 0;
   outline: none;
   font: 13px/1.72 "SFMono-Regular", Consolas, monospace;
@@ -585,7 +589,7 @@ svg {
   min-width: 0;
   min-height: 0;
   overflow: auto;
-  background: white;
+  background: var(--preview-stage);
 }
 
 .workbench {
@@ -609,7 +613,7 @@ svg {
 .render-stage {
   min-height: calc(100vh - 138px);
   padding: 34px 42px 56px;
-  background: white;
+  background: var(--preview-stage);
 }
 
 .frame-host {
@@ -786,7 +790,7 @@ svg {
 .split-preview {
   min-width: 0;
   padding: 28px 30px 50px;
-  background: white;
+  background: var(--preview-stage);
 }
 
 .source-view {
@@ -803,7 +807,7 @@ svg {
   top: 0;
   align-self: start;
   min-height: calc(100vh - 138px);
-  background: rgba(255, 255, 255, 0.96);
+  background: var(--right-bg);
 }
 
 .right-content {
