@@ -933,7 +933,12 @@ elements.clear.addEventListener("click", async () => {
     instant.html = "";
     await api.updateInstantDocument(instant);
   }
-  if (activeDocumentId === "instant") clearPreview();
+  if (activeDocumentId === "instant") {
+    elements.sourceContent.textContent = "";
+    elements.splitSource.textContent = "";
+    clearPreview();
+    updateStatus();
+  }
   elements.instantContent.focus();
 });
 elements.paste.addEventListener("click", pasteClipboard);
