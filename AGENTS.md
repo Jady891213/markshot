@@ -38,7 +38,7 @@
 - Show the current global shortcut in the app title bar immediately left of a settings icon. Configure it in an in-app modal opened by that icon; do not expose a separate Hide Window button.
 - Keep `contextIsolation: true`, `nodeIntegration: false`, and expose only the narrow preload API.
 - The default quick action is `Command+Option+T` with the mobile profile.
-- Expose only two fixed output profiles: mobile at 1080 px with 36 px body text and 64 px canvas padding, and desktop at 1440 px with 32 px body text and 84 px canvas padding. Width, font size, and padding are profile-owned and are not user-editable.
+- Expose only two fixed output profiles: mobile at 1080 px with 32 px body text and 40 px canvas padding, and desktop at 1440 px with 32 output pixels (equivalent to a conventional 16 px reader at 2x) and 48 px canvas padding. Treat desktop as a wide reading layout instead of a stretched mobile card. Width, font size, and padding are profile-owned and are not user-editable.
 - Use a neutral light-gray fenced-code container in the light theme and a medium charcoal container in the dark theme. Avoid near-black code blocks unless a future named theme explicitly requires them.
 - A quick action must not overwrite the clipboard until a complete single-page image has been generated.
 - Content above 14,000 px is paginated. The quick action opens the manager for page selection and keeps the source clipboard intact.

@@ -21,14 +21,14 @@ export const OUTPUT_PROFILES = Object.freeze({
   mobile: Object.freeze({
     label: "移动端",
     width: 1080,
-    fontSize: 36,
-    padding: 64,
+    fontSize: 32,
+    padding: 40,
   }),
   desktop: Object.freeze({
     label: "PC",
     width: 1440,
     fontSize: 32,
-    padding: 84,
+    padding: 48,
   }),
 });
 

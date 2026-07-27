@@ -8,8 +8,8 @@ export const DEFAULT_SETTINGS = Object.freeze({
   background: "plain",
   showFooter: true,
   width: 1080,
-  fontSize: 36,
-  padding: 64,
+  fontSize: 32,
+  padding: 40,
   shortcutEnabled: true,
   accelerator: "Command+Option+T",
 });

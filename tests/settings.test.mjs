@@ -37,7 +37,7 @@ test("settings persist presentation defaults without source content", async () =
     assert.deepEqual(loaded, saved);
     assert.equal(saved.width, 1440);
     assert.equal(saved.fontSize, 32);
-    assert.equal(saved.padding, 84);
+    assert.equal(saved.padding, 48);
     assert.equal(saved.showFooter, false);
     assert.equal("source" in loaded, false);
     assert.equal("title" in loaded, false);
