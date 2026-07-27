@@ -12,6 +12,7 @@
 
 - The app is a resident macOS app with both a Dock entry and a menu-bar entry. Closing the management window hides it; only Quit ends the process. Keep the Dock entry visible even when a third-party menu-bar organizer hides the tray item.
 - Image generation is memory-first. Do not create image files unless the user explicitly chooses Export.
+- Losslessly recompress captured PNG scanline data before clipboard copy or export. Keep the exact dimensions, pixels, alpha channel, and PNG format; do not trade image quality for file size.
 - Preserve UTF-8 and UTF-16LE/BE decoding with and without BOM.
 - The normal preview is selectable DOM rendered from the same complete HTML and theme CSS used by image capture. Create NativeImage objects only when the user chooses Copy, Export, or Quick Generate.
 - Load preview documents from an in-memory Blob URL at their exact output width. The UI CSP must keep inline styles enabled for the sandboxed preview frame while scripts remain restricted to `self`; otherwise the shared theme CSS is silently blocked.

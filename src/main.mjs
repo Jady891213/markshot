@@ -26,6 +26,7 @@ import {
   normalizeSettings,
   saveSettings,
 } from "./settings.mjs";
+import { optimizePngLossless } from "./png.mjs";
 
 const SOURCE_DIR = path.dirname(fileURLToPath(import.meta.url));
 const UI_DIR = path.join(SOURCE_DIR, "ui");
@@ -182,6 +183,7 @@ async function renderPreview(request) {
     source: String(request.source ?? ""),
     sourceFormat: request.sourceFormat,
     images: undefined,
+    pngBuffers: undefined,
     pages: [],
     totalHeight: 0,
   };
@@ -236,6 +238,21 @@ async function captureRecord(record) {
     record.images = images;
     return images;
   });
+}
+
+async function optimizedPagePng(record, pageIndex, image) {
+  record.pngBuffers ??= [];
+  if (record.pngBuffers[pageIndex]) return record.pngBuffers[pageIndex];
+  const optimized = await optimizePngLossless(image.toPNG());
+  record.pngBuffers[pageIndex] = optimized;
+  return optimized;
+}
+
+async function copyPageImage(record, pageIndex, image) {
+  const png = await optimizedPagePng(record, pageIndex, image);
+  const clipboardImage = nativeImage.createFromBuffer(png);
+  if (clipboardImage.isEmpty()) throw new Error("压缩后的图片无法读取");
+  clipboard.writeImage(clipboardImage);
 }
 
 function publicRecord(record) {
@@ -527,7 +544,7 @@ async function quickGenerate() {
     }
 
     const images = await captureRecord(record);
-    clipboard.writeImage(images[0]);
+    await copyPageImage(record, 0, images[0]);
     showHud("图片已复制，可 Command+V", "success");
     return { status: "copied", pageCount: 1 };
   } catch (error) {
@@ -760,7 +777,7 @@ function registerIpc() {
     const images = await captureRecord(record);
     const image = images[pageIndex];
     if (!image) throw new Error("没有找到对应页面");
-    clipboard.writeImage(image);
+    await copyPageImage(record, pageIndex, image);
     return {
       ok: true,
       width: record.pages[pageIndex].width,
@@ -789,7 +806,8 @@ function registerIpc() {
       const images = await captureRecord(record);
       const image = images[pageIndex];
       if (!image) throw new Error("没有找到对应页面");
-      await fs.writeFile(result.filePath, image.toPNG());
+      const png = await optimizedPagePng(record, pageIndex, image);
+      await fs.writeFile(result.filePath, png);
       return { canceled: false, path: result.filePath };
     },
   );

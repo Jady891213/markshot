@@ -10,7 +10,7 @@
     "start": "node node_modules/@electron-forge/cli/dist/electron-forge.js start",
     "package:app": "ELECTRON_MIRROR=https://npmmirror.com/mirrors/electron/ node node_modules/@electron-forge/cli/dist/electron-forge.js package --arch=arm64",
     "test": "node --test",
-    "check": "node --check src/main.mjs && node --check src/documents.mjs && node --check src/rendering.mjs && node --check src/settings.mjs && node --check src/ui/app.js"
+    "check": "node --check src/main.mjs && node --check src/documents.mjs && node --check src/png.mjs && node --check src/rendering.mjs && node --check src/settings.mjs && node --check src/ui/app.js"
   },
   "dependencies": {
     "highlight.js": "11.11.1",
