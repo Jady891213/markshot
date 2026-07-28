@@ -151,6 +151,14 @@ function activeScrollContainer() {
   return activeFrameRecord()?.scrollContainer || elements.contentScroll;
 }
 
+function wheelDeltaPixels(event, scrollContainer) {
+  if (event.deltaMode === WheelEvent.DOM_DELTA_LINE) return event.deltaY * 16;
+  if (event.deltaMode === WheelEvent.DOM_DELTA_PAGE) {
+    return event.deltaY * scrollContainer.clientHeight;
+  }
+  return event.deltaY;
+}
+
 function currentRenderOptions() {
   return {
     language: currentLanguage(),
@@ -653,6 +661,18 @@ function mountFrame(host, preview) {
         frame.contentDocument.addEventListener("click", (event) => {
           if (event.target.closest("a")) event.preventDefault();
         });
+        frame.contentWindow.addEventListener(
+          "wheel",
+          (event) => {
+            if (activeFrameHost() !== host || event.ctrlKey || !event.deltaY) {
+              return;
+            }
+            event.preventDefault();
+            const destination = scrollContainer || elements.contentScroll;
+            destination.scrollTop += wheelDeltaPixels(event, destination);
+          },
+          { passive: false },
+        );
       } catch {
         // The sandbox remains readable for normal srcdoc previews.
       }

@@ -37,6 +37,18 @@ test("desktop preview stays at a fixed 800 px reading width", () => {
   );
 });
 
+test("preview iframe forwards wheel input without direction-change latency", () => {
+  assert.match(
+    script,
+    /frame\.contentWindow\.addEventListener\(\s*"wheel"/s,
+  );
+  assert.match(script, /\{ passive: false \}/);
+  assert.match(
+    script,
+    /destination\.scrollTop \+= wheelDeltaPixels\(event, destination\)/,
+  );
+});
+
 test("copy and export split action stays seamless and equal-height", () => {
   assert.match(styles, /\.share-split\s*\{[^}]*height: 32px;/s);
   assert.match(
