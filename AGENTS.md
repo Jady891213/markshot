@@ -10,7 +10,7 @@
 
 ## Product invariants
 
-- The app is a resident macOS app with both a Dock entry and a menu-bar entry. Closing the management window hides it; only Quit ends the process. Keep the Dock entry visible even when a third-party menu-bar organizer hides the tray item.
+- The app is a resident macOS app with both a Dock entry and a menu-bar entry. Closing the management window hides it and removes the Dock entry while keeping the process and menu-bar entry alive; minimizing uses normal macOS behavior and keeps the Dock entry visible. Reopening the window restores the Dock entry, and only Quit ends the process.
 - Image generation is memory-first. Do not create image files unless the user explicitly chooses Export.
 - Losslessly recompress captured PNG scanline data before clipboard copy or export. Keep the exact dimensions, pixels, alpha channel, and PNG format; do not trade image quality for file size.
 - Preserve UTF-8 and UTF-16LE/BE decoding with and without BOM.
@@ -20,7 +20,7 @@
 - Keep copy and export as one split action in the operation bar: the main button copies and its menu exports. For multi-page output, the compact page selector chooses the single page acted upon.
 - Keep both halves of the copy/export split action exactly 32 px high with one continuous primary background and no visible internal divider.
 - Use the macOS tray title `MS` with the system monospaced font and an empty image. This is intentionally text-only so the status item follows macOS light/dark menu-bar contrast and cannot collapse into an unreadable template-image blob.
-- Clicking the menu-bar status icon opens its context menu; it must not open the management window directly.
+- Single-clicking the menu-bar status icon opens its context menu. Double-clicking it opens the management window directly and cancels the pending single-click menu.
 - Reopening MarkShot from its `.app` icon activates and shows the management window.
 - Keep the workspace unified around two sidebar modes: `即时` for editable pasted content and `阅读` for read-only local Markdown documents. Do not add horizontal document tabs.
 - Only the fixed immediate textarea is editable. Preview, Split, Source, and every local document view are read-only.

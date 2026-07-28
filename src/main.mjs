@@ -41,6 +41,8 @@ const MAX_RENDER_RECORDS = 5;
 let mainWindow;
 let renderWindow;
 let tray;
+let trayMenu;
+let trayClickTimer;
 let hudWindow;
 let hudTimer;
 let isQuitting = false;
@@ -421,6 +423,7 @@ function showMainWindow() {
   if (!mainWindow || mainWindow.isDestroyed()) {
     createMainWindow();
   }
+  void app.dock?.show();
   if (mainWindow.isMinimized()) mainWindow.restore();
   app.focus({ steal: true });
   mainWindow.show();
@@ -598,41 +601,54 @@ function rebuildTrayMenu() {
   const shortcutLabel = settings.shortcutEnabled
     ? `${t("menu.quickGenerate")}（${settings.accelerator.replaceAll("+", " + ")}）`
     : t("menu.quickGenerate");
-  tray.setContextMenu(
-    Menu.buildFromTemplate([
-      {
-        label: t("menu.openManager"),
-        click: showMainWindow,
+  trayMenu = Menu.buildFromTemplate([
+    {
+      label: t("menu.openManager"),
+      click: showMainWindow,
+    },
+    {
+      label: shortcutLabel,
+      click: quickGenerate,
+    },
+    { type: "separator" },
+    {
+      label: t("menu.enableShortcut"),
+      type: "checkbox",
+      checked: settings.shortcutEnabled,
+      click: async (menuItem) => {
+        const result = await applyShortcutSettings({
+          ...settings,
+          shortcutEnabled: menuItem.checked,
+        });
+        if (!result.ok) {
+          menuItem.checked = settings.shortcutEnabled;
+          showHud(t("hud.shortcutConflict"), "error", 2600);
+        }
+        mainWindow?.webContents.send("settings:changed", settings);
       },
-      {
-        label: shortcutLabel,
-        click: quickGenerate,
-      },
-      { type: "separator" },
-      {
-        label: t("menu.enableShortcut"),
-        type: "checkbox",
-        checked: settings.shortcutEnabled,
-        click: async (menuItem) => {
-          const result = await applyShortcutSettings({
-            ...settings,
-            shortcutEnabled: menuItem.checked,
-          });
-          if (!result.ok) {
-            menuItem.checked = settings.shortcutEnabled;
-            showHud(t("hud.shortcutConflict"), "error", 2600);
-          }
-          mainWindow?.webContents.send("settings:changed", settings);
-        },
-      },
-      { type: "separator" },
-      {
-        label: t("menu.quit"),
-        accelerator: "Command+Q",
-        click: () => app.quit(),
-      },
-    ]),
-  );
+    },
+    { type: "separator" },
+    {
+      label: t("menu.quit"),
+      accelerator: "Command+Q",
+      click: () => app.quit(),
+    },
+  ]);
+}
+
+function cancelTrayMenuPopup() {
+  clearTimeout(trayClickTimer);
+  trayClickTimer = undefined;
+}
+
+function scheduleTrayMenuPopup() {
+  cancelTrayMenuPopup();
+  trayClickTimer = setTimeout(() => {
+    trayClickTimer = undefined;
+    if (tray && !tray.isDestroyed() && trayMenu) {
+      tray.popUpContextMenu(trayMenu);
+    }
+  }, 300);
 }
 
 async function registerAccelerator(accelerator) {
@@ -688,6 +704,16 @@ function createTray() {
   tray = new Tray(nativeImage.createEmpty());
   tray.setTitle("MS", { fontType: "monospaced" });
   tray.setToolTip("MarkShot");
+  tray.setIgnoreDoubleClickEvents(false);
+  tray.on("click", scheduleTrayMenuPopup);
+  tray.on("right-click", () => {
+    cancelTrayMenuPopup();
+    if (trayMenu) tray.popUpContextMenu(trayMenu);
+  });
+  tray.on("double-click", () => {
+    cancelTrayMenuPopup();
+    showMainWindow();
+  });
   rebuildTrayMenu();
 }
 
@@ -797,10 +823,7 @@ function createMainWindow() {
     if (isQuitting) return;
     event.preventDefault();
     hideMainWindow();
-  });
-  mainWindow.on("minimize", (event) => {
-    event.preventDefault();
-    mainWindow.hide();
+    app.dock?.hide();
   });
   mainWindow.on("closed", () => {
     mainWindow = undefined;
@@ -948,6 +971,7 @@ if (gotSingleInstanceLock) {
     globalShortcut.unregisterAll();
     documentLibrary?.dispose();
     clearTimeout(hudTimer);
+    cancelTrayMenuPopup();
   });
 
   app.whenReady().then(async () => {
