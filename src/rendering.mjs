@@ -382,22 +382,124 @@ export function buildDocument(input) {
   };
 }
 
-export function pageLayout(totalHeight, width) {
+function normalizedBreakpoints(breakpoints, totalHeight) {
+  const byPosition = new Map();
+  for (const candidate of Array.isArray(breakpoints) ? breakpoints : []) {
+    const value =
+      typeof candidate === "number"
+        ? { y: candidate, kind: "block", level: 7 }
+        : candidate;
+    const y = Math.round(Number(value?.y));
+    if (!Number.isFinite(y) || y <= 0 || y >= totalHeight) continue;
+    const kind = value?.kind === "heading" ? "heading" : "block";
+    const level =
+      kind === "heading"
+        ? Math.min(6, Math.max(1, Math.round(Number(value?.level) || 6)))
+        : 7;
+    const previous = byPosition.get(y);
+    if (
+      !previous ||
+      (kind === "heading" &&
+        (previous.kind !== "heading" || level < previous.level))
+    ) {
+      byPosition.set(y, { y, kind, level });
+    }
+  }
+  return [...byPosition.values()].sort((left, right) => left.y - right.y);
+}
+
+function nearestBreakpoint(
+  candidates,
+  ideal,
+  minimum,
+  maximum,
+  kind,
+  radius,
+  targetHeight,
+) {
+  let selected;
+  let selectedScore = Number.POSITIVE_INFINITY;
+  for (const candidate of candidates) {
+    if (
+      candidate.kind !== kind ||
+      candidate.y < minimum ||
+      candidate.y > maximum
+    ) {
+      continue;
+    }
+    const distance = Math.abs(candidate.y - ideal);
+    if (distance > radius) continue;
+    const headingPenalty =
+      kind === "heading" ? (candidate.level - 1) * targetHeight * 0.012 : 0;
+    const score = distance + headingPenalty;
+    if (score < selectedScore) {
+      selected = candidate.y;
+      selectedScore = score;
+    }
+  }
+  return selected;
+}
+
+export function pageLayout(totalHeight, width, breakpoints = []) {
   const safeHeight = Math.max(1, Math.ceil(totalHeight));
+  const columnCount = Math.ceil(safeHeight / MAX_PAGE_HEIGHT);
+  const targetHeight = safeHeight / columnCount;
+  const candidates = normalizedBreakpoints(breakpoints, safeHeight);
+  const boundaries = [0];
+
+  for (let index = 1; index < columnCount; index += 1) {
+    const previous = boundaries.at(-1);
+    const remainingColumns = columnCount - index;
+    const ideal = Math.round((safeHeight * index) / columnCount);
+    const minimum = Math.max(
+      previous + 1,
+      safeHeight - remainingColumns * MAX_PAGE_HEIGHT,
+    );
+    const maximum = Math.min(
+      previous + MAX_PAGE_HEIGHT,
+      safeHeight - remainingColumns,
+    );
+    const heading = nearestBreakpoint(
+      candidates,
+      ideal,
+      minimum,
+      maximum,
+      "heading",
+      Math.max(240, targetHeight * 0.2),
+      targetHeight,
+    );
+    const block =
+      heading ??
+      nearestBreakpoint(
+        candidates,
+        ideal,
+        minimum,
+        maximum,
+        "block",
+        Math.max(160, targetHeight * 0.1),
+        targetHeight,
+      );
+    boundaries.push(
+      block ?? Math.min(maximum, Math.max(minimum, ideal)),
+    );
+  }
+  boundaries.push(safeHeight);
+
   const pages = [];
-  for (let y = 0, index = 0; y < safeHeight; y += MAX_PAGE_HEIGHT, index += 1) {
+  for (let index = 0; index < columnCount; index += 1) {
+    const y = boundaries[index];
     pages.push({
       index,
       y,
       width,
-      height: Math.min(MAX_PAGE_HEIGHT, safeHeight - y),
+      height: boundaries[index + 1] - y,
     });
   }
   return pages;
 }
 
-export function imageLayout(totalHeight, width) {
-  const pages = pageLayout(totalHeight, width);
+export function imageLayout(totalHeight, width, breakpoints = []) {
+  const pages = pageLayout(totalHeight, width, breakpoints);
   const columnCount = pages.length;
   return {
     pages,

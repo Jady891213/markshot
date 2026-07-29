@@ -72,6 +72,7 @@ let documentLibrary;
 let recentDocumentsPath = "";
 let renderQueue = Promise.resolve();
 let loadedRenderRevision = "";
+let renderCaptureScaleFactor = 1;
 const renderRecords = new Map();
 const diagramCache = new Map();
 const pendingOpenPaths = [];
@@ -243,15 +244,20 @@ async function renderDiagramBlocks(blocks, options) {
 
 function createRenderWindow(width = 1080) {
   if (renderWindow && !renderWindow.isDestroyed()) return renderWindow;
+  renderCaptureScaleFactor = Math.max(
+    1,
+    Number(screen.getPrimaryDisplay()?.scaleFactor) || 1,
+  );
   renderWindow = new BrowserWindow({
     show: false,
     frame: false,
     transparent: false,
     useContentSize: true,
-    width,
+    width: Math.ceil(width / renderCaptureScaleFactor),
     height: 100,
     webPreferences: {
       offscreen: true,
+      zoomFactor: 1 / renderCaptureScaleFactor,
       backgroundThrottling: false,
       contextIsolation: true,
       nodeIntegration: false,
@@ -292,8 +298,12 @@ async function waitForRenderedContent(window) {
 
 async function loadRenderRecord(record) {
   const window = createRenderWindow(record.options.width);
-  window.setContentSize(record.options.width, 100);
+  window.setContentSize(
+    Math.ceil(record.options.width / renderCaptureScaleFactor),
+    100,
+  );
   await window.loadURL(dataUrl(record.html));
+  window.webContents.setZoomFactor(1 / renderCaptureScaleFactor);
   await waitForRenderedContent(window);
   loadedRenderRevision = record.revision;
   return window;
@@ -301,16 +311,41 @@ async function loadRenderRecord(record) {
 
 async function measureRecord(record) {
   const window = await loadRenderRecord(record);
-  const totalHeight = await window.webContents.executeJavaScript(`
-    Math.ceil(Math.max(
+  const measurement = await window.webContents.executeJavaScript(`
+    (() => {
+      const totalHeight = Math.ceil(Math.max(
       document.documentElement.scrollHeight,
       document.body.scrollHeight,
       document.documentElement.offsetHeight,
       document.body.offsetHeight
-    ))
+      ));
+      const candidates = [];
+      const seen = new Set();
+      const add = (element, kind, level = 7) => {
+        if (!element) return;
+        const y = Math.round(element.getBoundingClientRect().top + window.scrollY);
+        if (y <= 0 || y >= totalHeight || seen.has(y)) return;
+        seen.add(y);
+        candidates.push({ y, kind, level });
+      };
+      document.querySelectorAll(".content h1, .content h2, .content h3, .content h4, .content h5, .content h6")
+        .forEach((element) => add(
+          element,
+          "heading",
+          Number(element.tagName.slice(1)) || 6
+        ));
+      document.querySelectorAll(".content > *")
+        .forEach((element) => add(element, "block"));
+      add(document.querySelector(".footer"), "block");
+      return { totalHeight, candidates };
+    })()
   `);
-  record.totalHeight = totalHeight;
-  const layout = imageLayout(totalHeight, record.options.width);
+  record.totalHeight = measurement.totalHeight;
+  const layout = imageLayout(
+    measurement.totalHeight,
+    record.options.width,
+    measurement.candidates,
+  );
   record.pages = layout.pages;
   record.layout = {
     columnCount: layout.columnCount,
@@ -376,7 +411,9 @@ function waitForNextPaint(window, timeout = 800) {
 async function capturePageWithRetry(window, page) {
   let actual = "0×0";
   for (let attempt = 0; attempt < 3; attempt += 1) {
-    window.setContentSize(page.width, page.height);
+    const captureWidth = Math.ceil(page.width / renderCaptureScaleFactor);
+    const captureHeight = Math.ceil(page.height / renderCaptureScaleFactor);
+    window.setContentSize(captureWidth, captureHeight);
     await window.webContents.executeJavaScript(`
       window.scrollTo(0, ${page.y});
       new Promise((resolve) =>
@@ -388,8 +425,8 @@ async function capturePageWithRetry(window, page) {
       {
         x: 0,
         y: 0,
-        width: page.width,
-        height: page.height,
+        width: captureWidth,
+        height: captureHeight,
       },
       { stayHidden: true, stayAwake: true },
     );
@@ -397,6 +434,19 @@ async function capturePageWithRetry(window, page) {
     actual = `${size.width}×${size.height}`;
     if (size.width === page.width && size.height === page.height) {
       return captured;
+    }
+    if (
+      size.width >= page.width &&
+      size.height >= page.height &&
+      size.width - page.width <= Math.ceil(renderCaptureScaleFactor) &&
+      size.height - page.height <= Math.ceil(renderCaptureScaleFactor)
+    ) {
+      return captured.crop({
+        x: 0,
+        y: 0,
+        width: page.width,
+        height: page.height,
+      });
     }
     if (size.width > 0 && size.height > 0) {
       const resized = captured.resize({

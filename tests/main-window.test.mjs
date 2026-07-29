@@ -28,13 +28,15 @@ test("tray single click opens the menu and double click opens the window", () =>
   assert.match(source, /tray\.popUpContextMenu\(trayMenu\)/);
 });
 
-test("long-image capture retries transient failures and normalizes Retina output", () => {
+test("long-image capture uses scale-aware viewports and retries transient failures", () => {
   assert.match(source, /async function capturePageWithRetry\(window, page\)/);
   assert.match(source, /for \(let attempt = 0; attempt < 3; attempt \+= 1\)/);
+  assert.match(source, /zoomFactor: 1 \/ renderCaptureScaleFactor/);
+  assert.match(source, /Math\.ceil\(page\.height \/ renderCaptureScaleFactor\)/);
   assert.match(source, /await window\.webContents\.capturePage\([\s\S]*?stayHidden: true/);
   assert.match(
     source,
-    /if \(size\.width > 0 && size\.height > 0\)[\s\S]*?captured\.resize\(/,
+    /captured\.crop\([\s\S]*?if \(size\.width > 0 && size\.height > 0\)[\s\S]*?captured\.resize\(/,
   );
 });
 

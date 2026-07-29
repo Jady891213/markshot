@@ -54,7 +54,8 @@
 - Recognize fenced Mermaid, Markmap, Graphviz/DOT, Vega-Lite, and ECharts blocks and render them locally as sanitized static SVG. Keep diagram rendering offline, reject external resources, and parse ECharts/Vega-Lite as JSON5 configuration only; never execute arbitrary user JavaScript.
 - Keep both root-level and flowchart-level Mermaid `htmlLabels` disabled and locked so labels render as native SVG text. The SVG sanitizer intentionally removes `foreignObject`; allowing Mermaid HTML labels makes node text disappear.
 - A quick action must not overwrite the clipboard until the complete one-image output has been generated and validated.
-- Content above 14,000 px flows into 2–4 top-aligned columns in one PNG. Every column keeps the selected mobile or desktop profile's original width, font size, and padding. Refuse content that would require more than four columns and keep the source clipboard intact.
+- Content above 14,000 px flows into 2–4 top-aligned columns in one PNG. Balance column heights around the equal-height target, preferring a nearby heading boundary and then a top-level content-block boundary instead of hard-cutting at every 14,000 px. Every column keeps the selected mobile or desktop profile's original width, font size, and padding. Refuse content that would require more than four columns and keep the source clipboard intact.
+- On Retina displays, render the hidden capture window at the inverse display zoom so its physical bitmap already matches the selected profile's target pixels. Do not render a 2x ultra-tall texture and then resize it down; that can exceed Chromium's texture limit, fail on the first attempt, and soften text.
 - Do not add remote CSS, fonts, analytics, uploads, or unrestricted navigation.
 - Do not add a localhost debug server, Vite, React, Vue, or a browser-only build unless a later requirement explicitly changes this boundary.
 

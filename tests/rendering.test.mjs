@@ -182,22 +182,34 @@ test("document generation and page splitting remain deterministic", () => {
   );
 
   assert.deepEqual(pageLayout(28_001, 1080), [
-    { index: 0, y: 0, width: 1080, height: 14_000 },
-    { index: 1, y: 14_000, width: 1080, height: 14_000 },
-    { index: 2, y: 28_000, width: 1080, height: 1 },
+    { index: 0, y: 0, width: 1080, height: 9_334 },
+    { index: 1, y: 9_334, width: 1080, height: 9_333 },
+    { index: 2, y: 18_667, width: 1080, height: 9_334 },
   ]);
   assert.equal(suggestedFileName("项目/进展"), "项目 进展.png");
   assert.deepEqual(imageLayout(28_001, 1080), {
     pages: [
-      { index: 0, y: 0, width: 1080, height: 14_000 },
-      { index: 1, y: 14_000, width: 1080, height: 14_000 },
-      { index: 2, y: 28_000, width: 1080, height: 1 },
+      { index: 0, y: 0, width: 1080, height: 9_334 },
+      { index: 1, y: 9_334, width: 1080, height: 9_333 },
+      { index: 2, y: 18_667, width: 1080, height: 9_334 },
     ],
     columnCount: 3,
     tooLong: false,
     outputWidth: 3240,
-    outputHeight: 14_000,
+    outputHeight: 9_334,
   });
+  assert.deepEqual(
+    pageLayout(28_001, 1080, [
+      { y: 8_500, kind: "heading", level: 1 },
+      { y: 9_200, kind: "block" },
+      { y: 18_500, kind: "heading", level: 2 },
+    ]),
+    [
+      { index: 0, y: 0, width: 1080, height: 8_500 },
+      { index: 1, y: 8_500, width: 1080, height: 10_000 },
+      { index: 2, y: 18_500, width: 1080, height: 9_501 },
+    ],
+  );
   assert.equal(imageLayout(56_001, 1600).tooLong, true);
 });
 
