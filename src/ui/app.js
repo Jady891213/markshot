@@ -42,7 +42,6 @@ const elements = {
   titleEnabled: document.getElementById("title-enabled"),
   imageTitle: document.getElementById("image-title"),
   showFooter: document.getElementById("show-footer"),
-  previewLayout: document.getElementById("preview-layout"),
   copyPreview: document.getElementById("copy-preview"),
   shareToggle: document.getElementById("share-menu-toggle"),
   shareMenu: document.getElementById("share-menu"),
@@ -854,18 +853,6 @@ function updatePreviewToolbar() {
   const tooLong = Boolean(currentPreview?.layout?.tooLong);
   elements.copyPreview.disabled = !hasPreview || tooLong;
   elements.shareToggle.disabled = !hasPreview || tooLong;
-  elements.previewLayout.hidden = !hasPreview;
-  if (!hasPreview) {
-    elements.previewLayout.textContent = "";
-  } else if (tooLong) {
-    elements.previewLayout.textContent = t("share.contentTooLong");
-  } else if (pages.length === 1) {
-    elements.previewLayout.textContent = t("share.singleColumn");
-  } else {
-    elements.previewLayout.textContent = t("share.columnCount", {
-      count: pages.length,
-    });
-  }
 }
 
 function mountPreviewFrames() {
@@ -877,10 +864,6 @@ function mountPreviewFrames() {
 function mountFrame(host, preview) {
   releaseFrame(host);
   const isMobile = preview.options.profile === "mobile";
-  if (preview.pages.length > 1) {
-    mountColumnFrames(host, preview);
-    return;
-  }
   host.classList.toggle("mobile-frame-host", isMobile);
   host.classList.toggle("desktop-frame-host", !isMobile);
   const shell = document.createElement("div");
@@ -982,102 +965,6 @@ function mountFrame(host, preview) {
   );
 }
 
-function mountColumnFrames(host, preview) {
-  host.classList.add("multi-column-frame-host");
-  const shell = document.createElement("div");
-  shell.className = "frame-shell multi-column-shell";
-  const inner = document.createElement("div");
-  inner.className = "multi-column-inner";
-  const documentUrl = URL.createObjectURL(
-    new Blob([preview.previewHtml], { type: "text/html;charset=utf-8" }),
-  );
-  const frames = preview.pages.map((page) => {
-    const frame = document.createElement("iframe");
-    frame.className = "document-frame column-document-frame";
-    frame.title = `${t("preview.frameTitle")} ${page.index + 1}`;
-    frame.setAttribute("sandbox", "allow-same-origin");
-    frame.setAttribute("scrolling", "no");
-    frame.style.left = `${page.index * preview.options.width}px`;
-    frame.style.width = `${page.width}px`;
-    frame.style.height = `${page.height}px`;
-    frame.src = documentUrl;
-    inner.append(frame);
-    frame.addEventListener(
-      "load",
-      () => {
-        try {
-          frame.contentWindow.scrollTo(0, page.y);
-          frame.contentDocument.addEventListener("click", (event) => {
-            if (event.target.closest("a")) event.preventDefault();
-          });
-          frame.contentWindow.addEventListener(
-            "keydown",
-            handlePreviewSearchShortcut,
-          );
-          frame.contentWindow.addEventListener(
-            "wheel",
-            (event) => {
-              if (activeFrameHost() !== host || event.ctrlKey) return;
-              event.preventDefault();
-              if (Math.abs(event.deltaX) > Math.abs(event.deltaY)) {
-                elements.contentScroll.scrollLeft += wheelDeltaPixels(
-                  { deltaMode: event.deltaMode, deltaY: event.deltaX },
-                  elements.contentScroll,
-                );
-              } else {
-                elements.contentScroll.scrollTop += wheelDeltaPixels(
-                  event,
-                  elements.contentScroll,
-                );
-              }
-            },
-            { passive: false },
-          );
-        } catch {
-          // The sandbox remains readable for normal Blob previews.
-        }
-        updateFrameScale(host);
-        if (
-          page.index === 0 &&
-          ((currentView === "preview" && host === elements.previewHost) ||
-            (currentView === "split" && host === elements.splitHost))
-        ) {
-          buildOutline(host);
-          restoreCurrentScroll();
-        }
-        if (
-          activeFrameHost() === host &&
-          !elements.previewSearch.hidden &&
-          elements.previewSearchInput.value
-        ) {
-          applyPreviewSearch();
-        }
-      },
-      { once: true },
-    );
-    return frame;
-  });
-  inner.style.width = `${preview.layout.outputWidth}px`;
-  inner.style.height = `${preview.layout.outputHeight}px`;
-  shell.append(inner);
-  host.replaceChildren(shell);
-  frameRecords.set(host, {
-    host,
-    shell,
-    inner,
-    frame: frames[0],
-    frames,
-    scrollContainer: undefined,
-    width: preview.layout.outputWidth,
-    scaleWidth: preview.options.width,
-    height: preview.layout.outputHeight,
-    profile: preview.options.profile,
-    pages: preview.pages,
-    scale: 1,
-    documentUrl,
-  });
-}
-
 function releaseFrame(host) {
   const record = frameRecords.get(host);
   if (!record) return;
@@ -1086,7 +973,6 @@ function releaseFrame(host) {
   host.classList.remove(
     "mobile-frame-host",
     "desktop-frame-host",
-    "multi-column-frame-host",
   );
 }
 

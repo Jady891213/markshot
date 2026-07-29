@@ -15,6 +15,7 @@
 - Losslessly recompress captured PNG scanline data before clipboard copy or export. Keep the exact dimensions, pixels, alpha channel, and PNG format; do not trade image quality for file size.
 - Preserve UTF-8 and UTF-16LE/BE decoding with and without BOM.
 - The normal preview is selectable DOM rendered from the same complete HTML and theme CSS used by image capture. Create NativeImage objects only when the user chooses Copy, Export, or Quick Generate.
+- Keep every managed Preview and Split preview as one continuous single-column document, even when the final image requires multiple columns. Apply the 2–4 column layout only while copying or exporting the one combined PNG.
 - Load preview documents from an in-memory Blob URL at their exact output width. The UI CSP must keep inline styles enabled for the sandboxed preview frame while scripts remain restricted to `self`; otherwise the shared theme CSS is silently blocked.
 - Show the mobile profile inside a fixed phone-shaped preview with an independently scrollable screen. Device chrome is preview-only and must never appear in copied or exported images. The desktop profile remains a scaled document canvas without device chrome.
 - Keep copy and export as one split action in the operation bar: the main button copies and its menu exports. Copy and export always act on the complete one-image output, including a 2–4 column composition when needed.
@@ -84,7 +85,7 @@ After validation, replace the sibling `MarkShot.app` and remove the Forge `out/`
 - Test headings, nested lists, tasks, tables, blockquotes, footnotes, code highlighting, links, images, and unsafe HTML removal.
 - Test file selection, Command+O, multi-file drag-and-drop, Open With, repeated-path deduplication, recent ordering, file refresh, and missing-file recovery.
 - Verify Immediate and Reading restore their own active document, view, scroll position, and heading; Preview, Split, and Source must remain read-only.
-- Verify Command+F from both the app chrome and focused preview iframe, including Chinese/English queries, no-result state, Enter/Shift+Enter navigation, multi-column previews, and Escape cleanup.
+- Verify Command+F from both the app chrome and focused preview iframe, including Chinese/English queries, no-result state, Enter/Shift+Enter navigation, long single-column previews, and Escape cleanup.
 - Verify mobile 1080 px and desktop 1600 px; desktop preview stays at 800 px and does not grow with the window, while legacy or custom profile inputs normalize to mobile.
 - Verify the global shortcut while another app has focus, successful clipboard image paste, 2–4 column composition, over-four-column refusal, shortcut conflict handling, and no disk output.
 - Verify Mermaid, Markmap, Graphviz/DOT, Vega-Lite, and ECharts fences in both themes, including safe fallback output for invalid or externally linked specifications.

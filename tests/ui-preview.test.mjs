@@ -37,12 +37,12 @@ test("desktop preview stays at a fixed 800 px reading width", () => {
   );
 });
 
-test("multi-page output is presented as one top-aligned column strip", () => {
-  assert.match(html, /id="preview-layout"/);
+test("long output stays single-column in preview while copy composes columns", () => {
+  assert.doesNotMatch(html, /id="preview-layout"/);
   assert.doesNotMatch(html, /id="preview-page"/);
-  assert.match(script, /function mountColumnFrames\(host, preview\)/);
-  assert.match(script, /preview\.layout\.outputWidth/);
-  assert.match(styles, /\.multi-column-inner\s*\{/);
+  assert.doesNotMatch(script, /function mountColumnFrames\(host, preview\)/);
+  assert.match(script, /frame\.style\.height = `\$\{preview\.totalHeight\}px`/);
+  assert.doesNotMatch(styles, /\.multi-column-inner\s*\{/);
 });
 
 test("preview iframe forwards wheel input without direction-change latency", () => {
