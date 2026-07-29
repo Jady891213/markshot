@@ -309,15 +309,18 @@ svg {
   background: #fff;
 }
 
-#preview-page {
-  max-width: 92px;
+.preview-layout {
+  max-width: 112px;
   height: 32px;
-  padding: 0 8px;
+  padding: 0 10px;
+  display: inline-flex;
+  align-items: center;
   color: #526077;
-  background: white;
+  background: #f8fafc;
   border: 1px solid #d6dee8;
   border-radius: 8px;
   font-size: 11px;
+  white-space: nowrap;
 }
 
 .share-split {
@@ -724,6 +727,28 @@ svg {
   overflow: hidden;
 }
 
+.frame-host.multi-column-frame-host {
+  width: max-content;
+  min-width: 100%;
+  margin: 0;
+}
+
+.multi-column-shell {
+  margin: 0 auto;
+}
+
+.multi-column-inner {
+  position: absolute;
+  top: 0;
+  left: 0;
+  transform-origin: top left;
+}
+
+.column-document-frame {
+  overflow: hidden;
+  transform: none;
+}
+
 .phone-screen .frame-shell {
   margin: 0;
 }
@@ -834,10 +859,11 @@ svg {
 
 .right-panel {
   position: sticky;
+  z-index: 5;
   top: 0;
   align-self: start;
   min-height: calc(100vh - 138px);
-  background: rgba(255, 255, 255, 0.96);
+  background: #fff;
 }
 
 .content-scroll[data-reader-theme="dark"] .render-stage,

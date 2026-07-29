@@ -1,8 +1,6 @@
 import {
   formatItemCount,
   formatOpenErrorCount,
-  formatPageCount,
-  formatPageOption,
   normalizeLanguage,
   translate,
 } from "../i18n.mjs";
@@ -38,7 +36,7 @@ const elements = {
   titleEnabled: document.getElementById("title-enabled"),
   imageTitle: document.getElementById("image-title"),
   showFooter: document.getElementById("show-footer"),
-  previewPage: document.getElementById("preview-page"),
+  previewLayout: document.getElementById("preview-layout"),
   copyPreview: document.getElementById("copy-preview"),
   shareToggle: document.getElementById("share-menu-toggle"),
   shareMenu: document.getElementById("share-menu"),
@@ -69,7 +67,6 @@ let activeDocumentId = "instant";
 let lastReadingDocumentId = "";
 let currentView = "preview";
 let currentPreview;
-let selectedPageIndex = 0;
 let shortcutDraft = "";
 let renderTimer;
 let settingsTimer;
@@ -294,7 +291,11 @@ function updateStatus() {
     profile === "desktop" ? "1600" : "1080"
   } px`;
   elements.statusPages.textContent = currentPreview?.pages?.length
-    ? formatPageCount(currentLanguage(), currentPreview.pages.length)
+    ? currentPreview.layout?.tooLong
+      ? t("share.contentTooLong")
+      : currentPreview.pages.length === 1
+        ? t("share.singleColumn")
+        : t("share.columnCount", { count: currentPreview.pages.length })
     : document?.source?.trim()
       ? t("status.waitingPreview")
       : t("status.waitingContent");
@@ -511,7 +512,6 @@ function scheduleRender(delay = 260) {
 
 function clearPreview() {
   currentPreview = undefined;
-  selectedPageIndex = 0;
   releaseFrame(elements.previewHost);
   releaseFrame(elements.splitHost);
   elements.previewHost.replaceChildren();
@@ -547,7 +547,6 @@ async function renderPreview() {
     });
     if (sequence !== renderSequence) return;
     currentPreview = result;
-    selectedPageIndex = 0;
     elements.emptyState.hidden = true;
     updatePreviewToolbar();
     mountPreviewFrames();
@@ -568,25 +567,21 @@ async function renderPreview() {
 function updatePreviewToolbar() {
   const pages = currentPreview?.pages || [];
   const hasPreview = pages.length > 0;
-  selectedPageIndex = hasPreview
-    ? Math.min(selectedPageIndex, pages.length - 1)
-    : 0;
-  elements.copyPreview.disabled = !hasPreview;
-  elements.shareToggle.disabled = !hasPreview;
-  elements.previewPage.hidden = pages.length <= 1;
-  elements.previewPage.replaceChildren(
-    ...pages.map((page) => {
-      const option = document.createElement("option");
-      option.value = String(page.index);
-      option.textContent = formatPageOption(
-        currentLanguage(),
-        page.index + 1,
-        pages.length,
-      );
-      return option;
-    }),
-  );
-  elements.previewPage.value = String(selectedPageIndex);
+  const tooLong = Boolean(currentPreview?.layout?.tooLong);
+  elements.copyPreview.disabled = !hasPreview || tooLong;
+  elements.shareToggle.disabled = !hasPreview || tooLong;
+  elements.previewLayout.hidden = !hasPreview;
+  if (!hasPreview) {
+    elements.previewLayout.textContent = "";
+  } else if (tooLong) {
+    elements.previewLayout.textContent = t("share.contentTooLong");
+  } else if (pages.length === 1) {
+    elements.previewLayout.textContent = t("share.singleColumn");
+  } else {
+    elements.previewLayout.textContent = t("share.columnCount", {
+      count: pages.length,
+    });
+  }
 }
 
 function mountPreviewFrames() {
@@ -598,6 +593,10 @@ function mountPreviewFrames() {
 function mountFrame(host, preview) {
   releaseFrame(host);
   const isMobile = preview.options.profile === "mobile";
+  if (preview.pages.length > 1) {
+    mountColumnFrames(host, preview);
+    return;
+  }
   host.classList.toggle("mobile-frame-host", isMobile);
   host.classList.toggle("desktop-frame-host", !isMobile);
   const shell = document.createElement("div");
@@ -689,12 +688,101 @@ function mountFrame(host, preview) {
   );
 }
 
+function mountColumnFrames(host, preview) {
+  host.classList.add("multi-column-frame-host");
+  const shell = document.createElement("div");
+  shell.className = "frame-shell multi-column-shell";
+  const inner = document.createElement("div");
+  inner.className = "multi-column-inner";
+  const documentUrl = URL.createObjectURL(
+    new Blob([preview.previewHtml], { type: "text/html;charset=utf-8" }),
+  );
+  const frames = preview.pages.map((page) => {
+    const frame = document.createElement("iframe");
+    frame.className = "document-frame column-document-frame";
+    frame.title = `${t("preview.frameTitle")} ${page.index + 1}`;
+    frame.setAttribute("sandbox", "allow-same-origin");
+    frame.setAttribute("scrolling", "no");
+    frame.style.left = `${page.index * preview.options.width}px`;
+    frame.style.width = `${page.width}px`;
+    frame.style.height = `${page.height}px`;
+    frame.src = documentUrl;
+    inner.append(frame);
+    frame.addEventListener(
+      "load",
+      () => {
+        try {
+          frame.contentWindow.scrollTo(0, page.y);
+          frame.contentDocument.addEventListener("click", (event) => {
+            if (event.target.closest("a")) event.preventDefault();
+          });
+          frame.contentWindow.addEventListener(
+            "wheel",
+            (event) => {
+              if (activeFrameHost() !== host || event.ctrlKey) return;
+              event.preventDefault();
+              if (Math.abs(event.deltaX) > Math.abs(event.deltaY)) {
+                elements.contentScroll.scrollLeft += wheelDeltaPixels(
+                  { deltaMode: event.deltaMode, deltaY: event.deltaX },
+                  elements.contentScroll,
+                );
+              } else {
+                elements.contentScroll.scrollTop += wheelDeltaPixels(
+                  event,
+                  elements.contentScroll,
+                );
+              }
+            },
+            { passive: false },
+          );
+        } catch {
+          // The sandbox remains readable for normal Blob previews.
+        }
+        updateFrameScale(host);
+        if (
+          page.index === 0 &&
+          ((currentView === "preview" && host === elements.previewHost) ||
+            (currentView === "split" && host === elements.splitHost))
+        ) {
+          buildOutline(host);
+          restoreCurrentScroll();
+        }
+      },
+      { once: true },
+    );
+    return frame;
+  });
+  inner.style.width = `${preview.layout.outputWidth}px`;
+  inner.style.height = `${preview.layout.outputHeight}px`;
+  shell.append(inner);
+  host.replaceChildren(shell);
+  frameRecords.set(host, {
+    host,
+    shell,
+    inner,
+    frame: frames[0],
+    frames,
+    scrollContainer: undefined,
+    width: preview.layout.outputWidth,
+    scaleWidth: preview.options.width,
+    height: preview.layout.outputHeight,
+    profile: preview.options.profile,
+    pages: preview.pages,
+    scale: 1,
+    documentUrl,
+  });
+}
+
 function releaseFrame(host) {
   const record = frameRecords.get(host);
   if (!record) return;
   frameRecords.delete(host);
   if (record.documentUrl) URL.revokeObjectURL(record.documentUrl);
-  host.classList.remove("mobile-frame-host", "desktop-frame-host");
+  host.classList.remove(
+    "mobile-frame-host",
+    "desktop-frame-host",
+    "multi-column-frame-host",
+  );
 }
 
 function updateFrameScale(host) {
@@ -702,14 +790,18 @@ function updateFrameScale(host) {
   if (!record || !record.host.isConnected) return;
   const availableWidth = Math.max(
     240,
-    record.scrollContainer?.clientWidth || record.host.clientWidth,
+    record.scrollContainer?.clientWidth ||
+      Math.min(record.host.clientWidth, elements.contentScroll.clientWidth),
   );
   const maximumScale = record.profile === "desktop" ? 0.5 : 1;
-  const scale = Math.min(maximumScale, availableWidth / record.width);
+  const scale = Math.min(
+    maximumScale,
+    availableWidth / (record.scaleWidth || record.width),
+  );
   record.scale = scale;
   record.shell.style.width = `${Math.round(record.width * scale)}px`;
   record.shell.style.height = `${Math.ceil(record.height * scale)}px`;
-  record.frame.style.transform = `scale(${scale})`;
+  (record.inner || record.frame).style.transform = `scale(${scale})`;
 }
 
 function activeFrameHost() {
@@ -782,7 +874,15 @@ function targetScrollTop(target) {
   const scrollRect = elements.contentScroll.getBoundingClientRect();
   const hostTop =
     hostRect.top - scrollRect.top + elements.contentScroll.scrollTop;
-  return hostTop + target.heading.offsetTop * record.scale;
+  const page = record.pages?.find(
+    ({ y, height }) =>
+      target.heading.offsetTop >= y &&
+      target.heading.offsetTop < y + height,
+  );
+  const localOffset = page
+    ? target.heading.offsetTop - page.y
+    : target.heading.offsetTop;
+  return hostTop + localOffset * record.scale;
 }
 
 function scrollToHeading(index) {
@@ -795,6 +895,23 @@ function scrollToHeading(index) {
   const target = outlineTargets[index];
   if (!target) return;
   currentState().activeHeading = index;
+  const record = frameRecords.get(target.host);
+  if (record?.pages?.length) {
+    const page = record.pages.find(
+      ({ y, height }) =>
+        target.heading.offsetTop >= y &&
+        target.heading.offsetTop < y + height,
+    );
+    if (page) {
+      elements.contentScroll.scrollTo({
+        left: Math.max(
+          0,
+          page.index * (record.scaleWidth || page.width) * record.scale,
+        ),
+        behavior: "smooth",
+      });
+    }
+  }
   activeScrollContainer().scrollTo({
     top: Math.max(0, targetScrollTop(target) - 22),
     behavior: "smooth",
@@ -803,6 +920,43 @@ function scrollToHeading(index) {
 
 function updateActiveOutline() {
   if (!outlineTargets.length) return;
+  const record = frameRecords.get(activeFrameHost());
+  if (record?.pages?.length) {
+    const columnWidth = (record.scaleWidth || 1) * record.scale;
+    const pageIndex = Math.max(
+      0,
+      Math.min(
+        record.pages.length - 1,
+        Math.round(elements.contentScroll.scrollLeft / columnWidth),
+      ),
+    );
+    const page = record.pages[pageIndex];
+    const hostRect = record.host.getBoundingClientRect();
+    const scrollRect = elements.contentScroll.getBoundingClientRect();
+    const hostTop =
+      hostRect.top - scrollRect.top + elements.contentScroll.scrollTop;
+    const localY = Math.max(
+      0,
+      (elements.contentScroll.scrollTop - hostTop + 72) / record.scale,
+    );
+    const documentOffset = page.y + localY;
+    let activeIndex = 0;
+    for (const target of outlineTargets) {
+      if (target.heading.offsetTop <= documentOffset) {
+        activeIndex = target.index;
+      } else {
+        break;
+      }
+    }
+    currentState().activeHeading = activeIndex;
+    elements.outlineList.querySelectorAll("button").forEach((button) => {
+      button.classList.toggle(
+        "active",
+        Number(button.dataset.outlineIndex) === activeIndex,
+      );
+    });
+    return;
+  }
   const threshold = activeScrollContainer().scrollTop + 72;
   let activeIndex = 0;
   for (const target of outlineTargets) {
@@ -825,7 +979,6 @@ async function copyCurrentPage() {
   try {
     await api.copyPage({
       revision: currentPreview.revision,
-      pageIndex: selectedPageIndex,
     });
     showToast(t("toast.copied"));
   } catch (error) {
@@ -846,7 +999,6 @@ async function exportCurrentPage() {
   try {
     const result = await api.exportPage({
       revision: currentPreview.revision,
-      pageIndex: selectedPageIndex,
       suggestedName: "",
     });
     if (!result.canceled) {
@@ -1152,9 +1304,6 @@ elements.showFooter.addEventListener("change", () => {
   scheduleRender();
 });
 
-elements.previewPage.addEventListener("change", () => {
-  selectedPageIndex = Number(elements.previewPage.value) || 0;
-});
 elements.copyPreview.addEventListener("click", copyCurrentPage);
 elements.shareToggle.addEventListener("click", (event) => {
   event.stopPropagation();

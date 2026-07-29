@@ -1,7 +1,10 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import zlib from "node:zlib";
-import { optimizePngLossless } from "../src/png.mjs";
+import {
+  composePngColumns,
+  optimizePngLossless,
+} from "../src/png.mjs";
 
 const PNG_SIGNATURE = Buffer.from([
   0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a,
@@ -28,9 +31,7 @@ function chunk(type, data) {
   return Buffer.concat([length, typeBuffer, data, checksum]);
 }
 
-function fixturePng() {
-  const width = 240;
-  const height = 160;
+function fixturePng(width = 240, height = 160, color = [255, 255, 255, 255]) {
   const header = Buffer.alloc(13);
   header.writeUInt32BE(width, 0);
   header.writeUInt32BE(height, 4);
@@ -38,9 +39,13 @@ function fixturePng() {
   header[9] = 6;
 
   const rowSize = 1 + width * 4;
-  const scanlines = Buffer.alloc(rowSize * height, 0xff);
+  const scanlines = Buffer.alloc(rowSize * height);
   for (let row = 0; row < height; row += 1) {
     scanlines[row * rowSize] = 0;
+    for (let column = 0; column < width; column += 1) {
+      const offset = row * rowSize + 1 + column * 4;
+      scanlines.set(color, offset);
+    }
   }
   const unoptimized = zlib.deflateSync(scanlines, { level: 0 });
   return {
@@ -84,4 +89,26 @@ test("invalid and already optimized input remains safe", async () => {
   const optimized = await optimizePngLossless(png);
   const secondPass = await optimizePngLossless(optimized);
   assert.deepEqual(secondPass, optimized);
+});
+
+test("PNG columns are combined left-to-right and aligned at the top", async () => {
+  const red = fixturePng(2, 2, [255, 0, 0, 255]).png;
+  const blue = fixturePng(3, 1, [0, 0, 255, 255]).png;
+  const output = await composePngColumns([red, blue]);
+  const chunks = inflatedImageData(output);
+  const rowSize = 1 + 5 * 4;
+  assert.equal(chunks.length, rowSize * 2);
+  assert.deepEqual(
+    [...chunks.subarray(1, 1 + 2 * 4)],
+    [255, 0, 0, 255, 255, 0, 0, 255],
+  );
+  assert.deepEqual(
+    [...chunks.subarray(1 + 2 * 4, 1 + 5 * 4)],
+    [0, 0, 255, 255, 0, 0, 255, 255, 0, 0, 255, 255],
+  );
+  const secondRow = rowSize + 1;
+  assert.deepEqual(
+    [...chunks.subarray(secondRow + 2 * 4, secondRow + 5 * 4)],
+    [0, 0, 255, 255, 0, 0, 255, 255, 0, 0, 255, 255],
+  );
 });

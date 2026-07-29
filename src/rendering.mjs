@@ -21,6 +21,17 @@ const THEME_CSS = await fs.readFile(
 );
 
 export const MAX_PAGE_HEIGHT = 14_000;
+export const MAX_IMAGE_COLUMNS = 4;
+
+const DIAGRAM_LANGUAGES = Object.freeze({
+  mermaid: "mermaid",
+  markmap: "markmap",
+  dot: "graphviz",
+  graphviz: "graphviz",
+  "vega-lite": "vega-lite",
+  vegalite: "vega-lite",
+  echarts: "echarts",
+});
 
 export const OUTPUT_PROFILES = Object.freeze({
   mobile: Object.freeze({
@@ -207,13 +218,55 @@ export function sanitizeContent(html) {
   });
 }
 
-export function renderSource(source, sourceFormat = "auto") {
+export function extractDiagramBlocks(source, sourceFormat = "auto") {
+  const original = String(source ?? "");
+  const format = detectSourceFormat(original, sourceFormat);
+  if (format === "html") return { source: original, diagrams: [] };
+
+  const diagrams = [];
+  const prepared = original.replace(
+    /^ {0,3}(`{3,}|~{3,})[ \t]*([a-z0-9_-]+)[^\n]*\n([\s\S]*?)^ {0,3}\1[ \t]*$/gim,
+    (block, _fence, language, body) => {
+      const type = DIAGRAM_LANGUAGES[String(language).toLowerCase()];
+      if (!type) return block;
+      const index = diagrams.length;
+      const token = `MARKSHOT_DIAGRAM_${String(index).padStart(4, "0")}`;
+      diagrams.push({
+        index,
+        type,
+        language: String(language).toLowerCase(),
+        source: String(body).replace(/\n$/, ""),
+        token,
+      });
+      return `\`\`\`markshot-diagram\n${token}\n\`\`\``;
+    },
+  );
+  return { source: prepared, diagrams };
+}
+
+function replaceDiagramPlaceholders(html, diagramHtml = []) {
+  return diagramHtml.reduce((result, replacement, index) => {
+    const token = `MARKSHOT_DIAGRAM_${String(index).padStart(4, "0")}`;
+    const pattern = new RegExp(
+      `<pre><code class="hljs language-markshot-diagram">${token}\\n?</code></pre>`,
+      "g",
+    );
+    return result.replace(pattern, replacement);
+  }, html);
+}
+
+export function renderSource(
+  source,
+  sourceFormat = "auto",
+  diagramHtml = [],
+) {
   const format = detectSourceFormat(source, sourceFormat);
   if (format === "html") return sanitizeContent(source);
   const input = format === "plain" ? normalizePlainText(source) : source;
-  return sanitizeContent(
+  const sanitized = sanitizeContent(
     markdown.parse(String(input), { gfm: true, breaks: false }),
   );
+  return replaceDiagramPlaceholders(sanitized, diagramHtml);
 }
 
 function escapeHtml(value) {
@@ -260,7 +313,13 @@ export function buildDocument(input) {
   }
 
   const options = normalizeRenderOptions(input);
-  const content = wrapTables(renderSource(source, input.sourceFormat));
+  const content = wrapTables(
+    renderSource(
+      input.preparedSource ?? source,
+      input.sourceFormat,
+      input.diagramHtml,
+    ),
+  );
   const title = String(input.title ?? "").trim();
   const titleBlock = title
     ? `<h1 class="document-title">${escapeHtml(title)}</h1>`
@@ -280,6 +339,7 @@ export function buildDocument(input) {
         source,
         sourceFormat: input.sourceFormat,
         title,
+        diagramRevision: input.diagramRevision || "",
         ...options,
       }),
     )
@@ -336,13 +396,27 @@ export function pageLayout(totalHeight, width) {
   return pages;
 }
 
-export function suggestedFileName(title, pageIndex, pageCount) {
+export function imageLayout(totalHeight, width) {
+  const pages = pageLayout(totalHeight, width);
+  const columnCount = pages.length;
+  return {
+    pages,
+    columnCount,
+    tooLong: columnCount > MAX_IMAGE_COLUMNS,
+    outputWidth:
+      columnCount <= MAX_IMAGE_COLUMNS ? width * columnCount : width,
+    outputHeight:
+      columnCount <= MAX_IMAGE_COLUMNS
+        ? Math.max(...pages.map(({ height }) => height))
+        : 0,
+  };
+}
+
+export function suggestedFileName(title) {
   const base = String(title || "MarkShot")
     .replace(/[\\/:*?"<>|]/g, " ")
     .replace(/\s+/g, " ")
     .trim()
     .slice(0, 80);
-  const suffix =
-    pageCount > 1 ? `-${String(pageIndex + 1).padStart(2, "0")}` : "";
-  return `${base || "MarkShot"}${suffix}.png`;
+  return `${base || "MarkShot"}.png`;
 }

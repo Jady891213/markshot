@@ -3,6 +3,8 @@ import test from "node:test";
 import {
   buildDocument,
   decodeText,
+  extractDiagramBlocks,
+  imageLayout,
   normalizeRenderOptions,
   pageLayout,
   renderSource,
@@ -184,5 +186,55 @@ test("document generation and page splitting remain deterministic", () => {
     { index: 1, y: 14_000, width: 1080, height: 14_000 },
     { index: 2, y: 28_000, width: 1080, height: 1 },
   ]);
-  assert.equal(suggestedFileName("项目/进展", 1, 3), "项目 进展-02.png");
+  assert.equal(suggestedFileName("项目/进展"), "项目 进展.png");
+  assert.deepEqual(imageLayout(28_001, 1080), {
+    pages: [
+      { index: 0, y: 0, width: 1080, height: 14_000 },
+      { index: 1, y: 14_000, width: 1080, height: 14_000 },
+      { index: 2, y: 28_000, width: 1080, height: 1 },
+    ],
+    columnCount: 3,
+    tooLong: false,
+    outputWidth: 3240,
+    outputHeight: 14_000,
+  });
+  assert.equal(imageLayout(56_001, 1600).tooLong, true);
+});
+
+test("diagram fences are extracted without changing ordinary code blocks", () => {
+  const prepared = extractDiagramBlocks(`
+\`\`\`mermaid
+graph TD
+  A --> B
+\`\`\`
+
+\`\`\`dot
+digraph { A -> B }
+\`\`\`
+
+\`\`\`javascript
+console.log("keep me");
+\`\`\`
+`);
+  assert.deepEqual(
+    prepared.diagrams.map(({ type, language }) => ({ type, language })),
+    [
+      { type: "mermaid", language: "mermaid" },
+      { type: "graphviz", language: "dot" },
+    ],
+  );
+  assert.match(prepared.source, /language-markshot-diagram|markshot-diagram/);
+  assert.match(prepared.source, /console\.log/);
+
+  const html = buildDocument({
+    source: "diagram source",
+    preparedSource: prepared.source,
+    sourceFormat: "markdown",
+    diagramHtml: [
+      '<figure class="diagram-block">one</figure>',
+      '<figure class="diagram-block">two</figure>',
+    ],
+  }).html;
+  assert.match(html, /diagram-block">one/);
+  assert.match(html, /diagram-block">two/);
 });

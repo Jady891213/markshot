@@ -16,13 +16,24 @@ import {
 import {
   buildDocument,
   detectSourceFormat,
-  pageLayout,
+  extractDiagramBlocks,
+  imageLayout,
+  MAX_IMAGE_COLUMNS,
+  normalizeRenderOptions,
   suggestedFileName,
 } from "./rendering.mjs";
+import {
+  diagramCacheKey,
+  diagramErrorFigure,
+  diagramFigure,
+  DIAGRAM_RENDER_TIMEOUT_MS,
+  DIAGRAM_RENDERER_REVISION,
+  MAX_DIAGRAM_SOURCE_LENGTH,
+  MAX_DIAGRAMS_PER_DOCUMENT,
+} from "./diagrams.mjs";
 import { DocumentLibrary, isMarkdownPath } from "./documents.mjs";
 import {
   createLocalizedError,
-  formatMultiPageMessage,
   normalizeLanguage,
   translate,
 } from "./i18n.mjs";
@@ -32,7 +43,7 @@ import {
   normalizeSettings,
   saveSettings,
 } from "./settings.mjs";
-import { optimizePngLossless } from "./png.mjs";
+import { composePngColumns, optimizePngLossless } from "./png.mjs";
 
 const SOURCE_DIR = path.dirname(fileURLToPath(import.meta.url));
 const UI_DIR = path.join(SOURCE_DIR, "ui");
@@ -40,6 +51,8 @@ const MAX_RENDER_RECORDS = 5;
 
 let mainWindow;
 let renderWindow;
+let diagramWindow;
+let diagramWindowReady;
 let tray;
 let trayMenu;
 let trayClickTimer;
@@ -55,6 +68,7 @@ let recentDocumentsPath = "";
 let renderQueue = Promise.resolve();
 let loadedRenderRevision = "";
 const renderRecords = new Map();
+const diagramCache = new Map();
 const pendingOpenPaths = [];
 let instantDocument = {
   id: "instant",
@@ -101,6 +115,125 @@ function runInRenderQueue(task) {
   const result = renderQueue.then(task, task);
   renderQueue = result.catch(() => {});
   return result;
+}
+
+async function createDiagramWindow() {
+  if (diagramWindow && !diagramWindow.isDestroyed()) {
+    await diagramWindowReady;
+    return diagramWindow;
+  }
+  diagramWindow = new BrowserWindow({
+    show: false,
+    frame: false,
+    width: 1200,
+    height: 800,
+    webPreferences: {
+      preload: path.join(SOURCE_DIR, "diagram-preload.cjs"),
+      partition: "markshot-diagrams",
+      backgroundThrottling: false,
+      contextIsolation: true,
+      nodeIntegration: false,
+      sandbox: false,
+    },
+  });
+  diagramWindow.webContents.setWindowOpenHandler(() => ({ action: "deny" }));
+  diagramWindow.webContents.on("will-navigate", (event) => {
+    event.preventDefault();
+  });
+  diagramWindow.webContents.session.webRequest.onBeforeRequest(
+    { urls: ["http://*/*", "https://*/*", "ftp://*/*"] },
+    (_details, callback) => callback({ cancel: true }),
+  );
+  diagramWindow.on("closed", () => {
+    diagramWindow = undefined;
+    diagramWindowReady = undefined;
+  });
+  diagramWindowReady = diagramWindow.loadFile(
+    path.join(SOURCE_DIR, "diagram-host.html"),
+  );
+  await diagramWindowReady;
+  return diagramWindow;
+}
+
+function rememberDiagram(key, html) {
+  diagramCache.delete(key);
+  diagramCache.set(key, html);
+  while (diagramCache.size > 100) {
+    diagramCache.delete(diagramCache.keys().next().value);
+  }
+}
+
+async function renderDiagramBlock(block, options) {
+  const key = diagramCacheKey(block, options);
+  if (diagramCache.has(key)) return diagramCache.get(key);
+  if (block.source.length > MAX_DIAGRAM_SOURCE_LENGTH) {
+    throw new Error(
+      `Diagram source exceeds ${MAX_DIAGRAM_SOURCE_LENGTH} characters`,
+    );
+  }
+
+  const window = await createDiagramWindow();
+  const payload = {
+    id: key.slice(0, 16),
+    type: block.type,
+    source: block.source,
+    theme: options.theme,
+    width: Math.max(
+      240,
+      options.width -
+        options.padding * 2 -
+        Math.round(options.padding * 1.18) * 2,
+    ),
+  };
+  let timer;
+  try {
+    const svg = await Promise.race([
+      window.webContents.executeJavaScript(
+        `window.markshotDiagramHost.render(${JSON.stringify(payload)})`,
+      ),
+      new Promise((_, reject) => {
+        timer = setTimeout(
+          () => reject(new Error("Diagram rendering timed out")),
+          DIAGRAM_RENDER_TIMEOUT_MS,
+        );
+      }),
+    ]);
+    const html = diagramFigure(block.type, svg);
+    rememberDiagram(key, html);
+    return html;
+  } catch (error) {
+    if (error.message === "Diagram rendering timed out") {
+      diagramWindow?.destroy();
+    }
+    throw error;
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
+async function renderDiagramBlocks(blocks, options) {
+  const html = [];
+  for (const block of blocks) {
+    if (block.index >= MAX_DIAGRAMS_PER_DOCUMENT) {
+      html.push(
+        diagramErrorFigure(
+          options.language,
+          block,
+          options.language === "en"
+            ? `A document can contain at most ${MAX_DIAGRAMS_PER_DOCUMENT} diagrams`
+            : `一个文档最多支持 ${MAX_DIAGRAMS_PER_DOCUMENT} 个图表`,
+        ),
+      );
+      continue;
+    }
+    try {
+      html.push(await renderDiagramBlock(block, options));
+    } catch (error) {
+      console.error(`Failed to render ${block.type} diagram:`, error);
+      html.push(diagramErrorFigure(options.language, block, error.message));
+    }
+  }
+  return html;
 }
 
 function createRenderWindow(width = 1080) {
@@ -172,7 +305,14 @@ async function measureRecord(record) {
     ))
   `);
   record.totalHeight = totalHeight;
-  record.pages = pageLayout(totalHeight, record.options.width);
+  const layout = imageLayout(totalHeight, record.options.width);
+  record.pages = layout.pages;
+  record.layout = {
+    columnCount: layout.columnCount,
+    tooLong: layout.tooLong,
+    outputWidth: layout.outputWidth,
+    outputHeight: layout.outputHeight,
+  };
   return record;
 }
 
@@ -186,7 +326,15 @@ function rememberRecord(record) {
 }
 
 async function renderPreview(request) {
-  const built = buildDocument(request);
+  const options = normalizeRenderOptions(request);
+  const prepared = extractDiagramBlocks(request.source, request.sourceFormat);
+  const diagramHtml = await renderDiagramBlocks(prepared.diagrams, options);
+  const built = buildDocument({
+    ...request,
+    preparedSource: prepared.source,
+    diagramHtml,
+    diagramRevision: DIAGRAM_RENDERER_REVISION,
+  });
   const existing = renderRecords.get(built.revision);
   if (existing?.pages?.length) return existing;
 
@@ -196,7 +344,9 @@ async function renderPreview(request) {
     sourceFormat: request.sourceFormat,
     images: undefined,
     pngBuffers: undefined,
+    outputPng: undefined,
     pages: [],
+    layout: undefined,
     totalHeight: 0,
   };
   await runInRenderQueue(() => measureRecord(record));
@@ -204,8 +354,80 @@ async function renderPreview(request) {
   return record;
 }
 
+function waitForNextPaint(window, timeout = 800) {
+  return new Promise((resolve) => {
+    let timer;
+    const finish = () => {
+      clearTimeout(timer);
+      window.webContents.removeListener("paint", finish);
+      resolve();
+    };
+    window.webContents.once("paint", finish);
+    timer = setTimeout(finish, timeout);
+    window.webContents.invalidate();
+  });
+}
+
+async function capturePageWithRetry(window, page) {
+  let actual = "0×0";
+  for (let attempt = 0; attempt < 3; attempt += 1) {
+    window.setContentSize(page.width, page.height);
+    await window.webContents.executeJavaScript(`
+      window.scrollTo(0, ${page.y});
+      new Promise((resolve) =>
+        requestAnimationFrame(() => requestAnimationFrame(resolve))
+      )
+    `);
+    await waitForNextPaint(window);
+    const captured = await window.webContents.capturePage(
+      {
+        x: 0,
+        y: 0,
+        width: page.width,
+        height: page.height,
+      },
+      { stayHidden: true, stayAwake: true },
+    );
+    const size = captured.getSize();
+    actual = `${size.width}×${size.height}`;
+    if (size.width === page.width && size.height === page.height) {
+      return captured;
+    }
+    if (size.width > 0 && size.height > 0) {
+      const resized = captured.resize({
+        width: page.width,
+        height: page.height,
+        quality: "best",
+      });
+      const resizedSize = resized.getSize();
+      actual = `${resizedSize.width}×${resizedSize.height}`;
+      if (
+        resizedSize.width === page.width &&
+        resizedSize.height === page.height
+      ) {
+        return resized;
+      }
+    }
+    if (attempt < 2) {
+      await new Promise((resolve) =>
+        setTimeout(resolve, 80 * 2 ** attempt),
+      );
+    }
+  }
+  throw createLocalizedError(settings.language, "error.invalidImageSize", {
+    expected: `${page.width}×${page.height}`,
+    actual,
+  });
+}
+
 async function captureRecord(record) {
   if (record.images?.length === record.pages.length) return record.images;
+  if (record.layout?.tooLong) {
+    throw createLocalizedError(settings.language, "error.tooManyColumns", {
+      count: record.pages.length,
+      max: MAX_IMAGE_COLUMNS,
+    });
+  }
 
   return runInRenderQueue(async () => {
     if (record.images?.length === record.pages.length) return record.images;
@@ -216,38 +438,7 @@ async function captureRecord(record) {
     const images = [];
 
     for (const page of record.pages) {
-      window.setContentSize(page.width, page.height);
-      await window.webContents.executeJavaScript(`
-        window.scrollTo(0, ${page.y});
-        new Promise((resolve) =>
-          requestAnimationFrame(() => requestAnimationFrame(resolve))
-        )
-      `);
-      const captured = await window.webContents.capturePage({
-        x: 0,
-        y: 0,
-        width: page.width,
-        height: page.height,
-      });
-      const capturedSize = captured.getSize();
-      const image =
-        capturedSize.width === page.width &&
-        capturedSize.height === page.height
-          ? captured
-          : captured.resize({
-              width: page.width,
-              height: page.height,
-              quality: "best",
-            });
-      const size = image.getSize();
-      if (size.width !== page.width || size.height !== page.height) {
-        throw createLocalizedError(settings.language, "error.invalidImageSize", {
-          expected: `${page.width}×${page.height}`,
-          actual: `${size.width}×${size.height}`,
-        },
-        );
-      }
-      images.push(image);
+      images.push(await capturePageWithRetry(window, page));
     }
     record.images = images;
     return images;
@@ -262,14 +453,38 @@ async function optimizedPagePng(record, pageIndex, image) {
   return optimized;
 }
 
-async function copyPageImage(record, pageIndex, image) {
-  const png = await optimizedPagePng(record, pageIndex, image);
+async function finalOutputPng(record, images) {
+  if (record.outputPng) return record.outputPng;
+  if (images.length === 1) {
+    record.outputPng = await optimizedPagePng(record, 0, images[0]);
+    return record.outputPng;
+  }
+  const columns = [];
+  for (let index = 0; index < images.length; index += 1) {
+    columns.push(await optimizedPagePng(record, index, images[index]));
+  }
+  record.outputPng = await composePngColumns(columns);
+  return record.outputPng;
+}
+
+async function copyOutputImage(record, images) {
+  const png = await finalOutputPng(record, images);
   const clipboardImage = nativeImage.createFromBuffer(png);
   if (clipboardImage.isEmpty()) {
     throw createLocalizedError(
       settings.language,
       "error.invalidCompressedImage",
     );
+  }
+  const size = clipboardImage.getSize();
+  if (
+    size.width !== record.layout.outputWidth ||
+    size.height !== record.layout.outputHeight
+  ) {
+    throw createLocalizedError(settings.language, "error.invalidImageSize", {
+      expected: `${record.layout.outputWidth}×${record.layout.outputHeight}`,
+      actual: `${size.width}×${size.height}`,
+    });
   }
   clipboard.writeImage(clipboardImage);
 }
@@ -280,6 +495,7 @@ function publicRecord(record) {
     options: record.options,
     totalHeight: record.totalHeight,
     pages: record.pages,
+    layout: record.layout,
     previewHtml: record.html,
   };
 }
@@ -549,36 +765,35 @@ async function quickGenerate() {
       title: "",
       ...settings,
     });
-    if (record.pages.length > 1) {
+    if (record.layout.tooLong) {
       showMainWindow();
       mainWindow.webContents.send("quick:load", {
         source: instantDocument.source,
         sourceFormat: instantDocument.sourceFormat,
         html: payload.html,
-        message: formatMultiPageMessage(
-          settings.language,
-          record.pages.length,
-        ),
+        message: t("error.tooManyColumns", {
+          count: record.pages.length,
+          max: MAX_IMAGE_COLUMNS,
+        }),
       });
       showHud(
-        formatMultiPageMessage(
-          settings.language,
-          record.pages.length,
-          true,
-        ),
-        "info",
-        2600,
+        t("error.tooManyColumns", {
+          count: record.pages.length,
+          max: MAX_IMAGE_COLUMNS,
+        }),
+        "error",
+        3000,
       );
       return {
-        status: "needs-page-selection",
+        status: "too-long",
         pageCount: record.pages.length,
       };
     }
 
     const images = await captureRecord(record);
-    await copyPageImage(record, 0, images[0]);
+    await copyOutputImage(record, images);
     showHud(t("hud.copied"), "success");
-    return { status: "copied", pageCount: 1 };
+    return { status: "copied", pageCount: record.pages.length };
   } catch (error) {
     console.error("Quick generation failed:", error);
     showHud(
@@ -841,36 +1056,35 @@ function registerIpc() {
     return publicRecord(record);
   });
 
-  ipcMain.handle("page:copy", async (_event, { revision, pageIndex }) => {
+  ipcMain.handle("page:copy", async (_event, { revision }) => {
     const record = renderRecords.get(revision);
     if (!record) {
       throw createLocalizedError(settings.language, "error.previewExpired");
     }
     const images = await captureRecord(record);
-    const image = images[pageIndex];
-    if (!image) {
-      throw createLocalizedError(settings.language, "error.pageMissing");
-    }
-    await copyPageImage(record, pageIndex, image);
+    await copyOutputImage(record, images);
     return {
       ok: true,
-      width: record.pages[pageIndex].width,
-      height: record.pages[pageIndex].height,
+      width: record.layout.outputWidth,
+      height: record.layout.outputHeight,
+      columnCount: record.layout.columnCount,
     };
   });
 
   ipcMain.handle(
     "page:export",
-    async (_event, { revision, pageIndex, suggestedName }) => {
+    async (_event, { revision, suggestedName }) => {
       const record = renderRecords.get(revision);
       if (!record) {
         throw createLocalizedError(settings.language, "error.previewExpired");
       }
-      const fallbackName = suggestedFileName(
-        record.title,
-        pageIndex,
-        record.pages.length,
-      );
+      if (record.layout.tooLong) {
+        throw createLocalizedError(settings.language, "error.tooManyColumns", {
+          count: record.pages.length,
+          max: MAX_IMAGE_COLUMNS,
+        });
+      }
+      const fallbackName = suggestedFileName(record.title);
       const result = await dialog.showSaveDialog(mainWindow, {
         title: t("dialog.exportImage"),
         defaultPath: suggestedName || fallbackName,
@@ -880,11 +1094,7 @@ function registerIpc() {
       if (result.canceled || !result.filePath) return { canceled: true };
 
       const images = await captureRecord(record);
-      const image = images[pageIndex];
-      if (!image) {
-        throw createLocalizedError(settings.language, "error.pageMissing");
-      }
-      const png = await optimizedPagePng(record, pageIndex, image);
+      const png = await finalOutputPng(record, images);
       await fs.writeFile(result.filePath, png);
       return { canceled: false, path: result.filePath };
     },
@@ -972,6 +1182,8 @@ if (gotSingleInstanceLock) {
     documentLibrary?.dispose();
     clearTimeout(hudTimer);
     cancelTrayMenuPopup();
+    renderWindow?.destroy();
+    diagramWindow?.destroy();
   });
 
   app.whenReady().then(async () => {

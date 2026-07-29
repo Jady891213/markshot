@@ -33,8 +33,16 @@ test("desktop preview stays at a fixed 800 px reading width", () => {
   );
   assert.match(
     script,
-    /const scale = Math\.min\(maximumScale, availableWidth \/ record\.width\);/,
+    /availableWidth \/ \(record\.scaleWidth \|\| record\.width\)/,
   );
+});
+
+test("multi-page output is presented as one top-aligned column strip", () => {
+  assert.match(html, /id="preview-layout"/);
+  assert.doesNotMatch(html, /id="preview-page"/);
+  assert.match(script, /function mountColumnFrames\(host, preview\)/);
+  assert.match(script, /preview\.layout\.outputWidth/);
+  assert.match(styles, /\.multi-column-inner\s*\{/);
 });
 
 test("preview iframe forwards wheel input without direction-change latency", () => {
