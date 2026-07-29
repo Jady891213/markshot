@@ -17,7 +17,7 @@
 - The normal preview is selectable DOM rendered from the same complete HTML and theme CSS used by image capture. Create NativeImage objects only when the user chooses Copy, Export, or Quick Generate.
 - Load preview documents from an in-memory Blob URL at their exact output width. The UI CSP must keep inline styles enabled for the sandboxed preview frame while scripts remain restricted to `self`; otherwise the shared theme CSS is silently blocked.
 - Show the mobile profile inside a fixed phone-shaped preview with an independently scrollable screen. Device chrome is preview-only and must never appear in copied or exported images. The desktop profile remains a scaled document canvas without device chrome.
-- Keep copy and export as one split action in the operation bar: the main button copies and its menu exports. For multi-page output, the compact page selector chooses the single page acted upon.
+- Keep copy and export as one split action in the operation bar: the main button copies and its menu exports. Copy and export always act on the complete one-image output, including a 2–4 column composition when needed.
 - Keep both halves of the copy/export split action exactly 32 px high with one continuous primary background and no visible internal divider.
 - Use the macOS tray title `MS` with the system monospaced font and an empty image. This is intentionally text-only so the status item follows macOS light/dark menu-bar contrast and cannot collapse into an unreadable template-image blob.
 - Single-clicking the menu-bar status icon opens its context menu. Double-clicking it opens the management window directly and cancels the pending single-click menu.
@@ -47,8 +47,9 @@
 - The default quick action is `Command+Option+T` with the mobile profile.
 - Expose only two fixed output profiles: mobile at 1080 px with 32 px body text and 40 px canvas padding, and desktop at 1600 px with 32 output pixels (equivalent to a conventional 16 px reader at 2x) and 48 px canvas padding. Show desktop at a fixed 0.5 preview scale, producing an A4-like 800 px reading surface; larger windows add side whitespace instead of enlarging the document. Only shrink further when the available viewport is narrower than 800 px. Treat desktop as a wide reading layout instead of a stretched mobile card. Width, font size, and padding are profile-owned and are not user-editable.
 - Use a neutral light-gray fenced-code container in the light theme and a medium charcoal container in the dark theme. Avoid near-black code blocks unless a future named theme explicitly requires them.
-- A quick action must not overwrite the clipboard until a complete single-page image has been generated.
-- Content above 14,000 px is paginated. The quick action opens the manager for page selection and keeps the source clipboard intact.
+- Recognize fenced Mermaid, Markmap, Graphviz/DOT, Vega-Lite, and ECharts blocks and render them locally as sanitized static SVG. Keep diagram rendering offline, reject external resources, and parse ECharts/Vega-Lite as JSON5 configuration only; never execute arbitrary user JavaScript.
+- A quick action must not overwrite the clipboard until the complete one-image output has been generated and validated.
+- Content above 14,000 px flows into 2–4 top-aligned columns in one PNG. Every column keeps the selected mobile or desktop profile's original width, font size, and padding. Refuse content that would require more than four columns and keep the source clipboard intact.
 - Do not add remote CSS, fonts, analytics, uploads, or unrestricted navigation.
 - Do not add a localhost debug server, Vite, React, Vue, or a browser-only build unless a later requirement explicitly changes this boundary.
 
@@ -80,7 +81,8 @@ After validation, replace the sibling `MarkShot.app` and remove the Forge `out/`
 - Test file selection, Command+O, multi-file drag-and-drop, Open With, repeated-path deduplication, recent ordering, file refresh, and missing-file recovery.
 - Verify Immediate and Reading restore their own active document, view, scroll position, and heading; Preview, Split, and Source must remain read-only.
 - Verify mobile 1080 px and desktop 1600 px; desktop preview stays at 800 px and does not grow with the window, while legacy or custom profile inputs normalize to mobile.
-- Verify the global shortcut while another app has focus, successful clipboard image paste, multi-page fallback, shortcut conflict handling, and no disk output.
-- Verify both languages at the minimum, default, and maximized window sizes. English toolbar controls, mode/view switches, page selector, style cards, settings dialog, native menus, and HUD must not wrap, overlap, or clip; restart once in each language to verify persistence.
+- Verify the global shortcut while another app has focus, successful clipboard image paste, 2–4 column composition, over-four-column refusal, shortcut conflict handling, and no disk output.
+- Verify Mermaid, Markmap, Graphviz/DOT, Vega-Lite, and ECharts fences in both themes, including safe fallback output for invalid or externally linked specifications.
+- Verify both languages at the minimum, default, and maximized window sizes. English toolbar controls, mode/view switches, column status, style cards, settings dialog, native menus, and HUD must not wrap, overlap, or clip; restart once in each language to verify persistence.
 - On every manual or automated Electron run, quit the app and verify that no Electron Helper process remains. If the user expects the resident process to be ready after handoff, relaunch the verified final `.app` intentionally and report that it was left running.
 - Mark disposable files with `TMP to delete` and remove them before handoff.
