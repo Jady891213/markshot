@@ -56,7 +56,15 @@ async function renderMermaid(payload) {
     securityLevel: "strict",
     suppressErrorRendering: true,
     theme: payload.theme === "dark" ? "dark" : "default",
+    htmlLabels: false,
     flowchart: { htmlLabels: false, useMaxWidth: true },
+    secure: [
+      "secure",
+      "securityLevel",
+      "startOnLoad",
+      "maxTextSize",
+      "htmlLabels",
+    ],
   });
   await mermaid.parse(payload.source);
   const id = `markshot-${payload.id}`;

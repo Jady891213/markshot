@@ -1,6 +1,6 @@
 import crypto from "node:crypto";
 
-export const DIAGRAM_RENDERER_REVISION = "diagram-runtime-v1";
+export const DIAGRAM_RENDERER_REVISION = "diagram-runtime-v2";
 export const MAX_DIAGRAM_SOURCE_LENGTH = 200_000;
 export const MAX_DIAGRAMS_PER_DOCUMENT = 50;
 export const DIAGRAM_RENDER_TIMEOUT_MS = 10_000;

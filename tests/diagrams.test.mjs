@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import fs from "node:fs/promises";
 import test from "node:test";
 import {
   diagramCacheKey,
@@ -24,6 +25,22 @@ test("diagram SVG sanitization removes executable and external content", () => {
     /script|foreignObject|onload|https:\/\/example\.com/i,
   );
   assert.match(sanitized, /href="#local"/);
+});
+
+test("Mermaid uses native SVG text so sanitization preserves labels", async () => {
+  const preload = await fs.readFile(
+    new URL("../src/diagram-preload.cjs", import.meta.url),
+    "utf8",
+  );
+  assert.match(preload, /\n\s+htmlLabels: false,/);
+  assert.match(preload, /flowchart: \{ htmlLabels: false,/);
+
+  const sanitized = sanitizeDiagramSvg(`
+    <svg viewBox="0 0 100 30">
+      <text><tspan>输入 Markdown</tspan></text>
+    </svg>
+  `);
+  assert.match(sanitized, /<text><tspan>输入 Markdown<\/tspan><\/text>/);
 });
 
 test("diagram figures remain static and error fallbacks escape source", () => {
