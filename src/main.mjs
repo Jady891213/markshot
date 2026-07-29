@@ -475,6 +475,90 @@ async function capturePageWithRetry(window, page) {
   });
 }
 
+async function capturePageWithDebugger(debuggerSession, page) {
+  let actual = "0×0";
+  let lastError;
+  for (let attempt = 0; attempt < 3; attempt += 1) {
+    try {
+      const capturePadding =
+        attempt === 0 ? 0 : Math.ceil(renderCaptureScaleFactor);
+      const result = await debuggerSession.sendCommand(
+        "Page.captureScreenshot",
+        {
+          format: "png",
+          fromSurface: true,
+          captureBeyondViewport: true,
+          clip: {
+            x: 0,
+            y: page.y / renderCaptureScaleFactor,
+            width:
+              (page.width + capturePadding) /
+              renderCaptureScaleFactor,
+            height:
+              (page.height + capturePadding) /
+              renderCaptureScaleFactor,
+            scale: 1,
+          },
+        },
+      );
+      const captured = nativeImage.createFromBuffer(
+        Buffer.from(result.data, "base64"),
+      );
+      const size = captured.getSize();
+      actual = `${size.width}×${size.height}`;
+      if (size.width === page.width && size.height === page.height) {
+        return captured;
+      }
+      if (
+        size.width >= page.width &&
+        size.height >= page.height &&
+        size.width - page.width <= Math.ceil(renderCaptureScaleFactor) &&
+        size.height - page.height <= Math.ceil(renderCaptureScaleFactor)
+      ) {
+        return captured.crop({
+          x: 0,
+          y: 0,
+          width: page.width,
+          height: page.height,
+        });
+      }
+    } catch (error) {
+      lastError = error;
+    }
+    if (attempt < 2) {
+      await new Promise((resolve) =>
+        setTimeout(resolve, 80 * 2 ** attempt),
+      );
+    }
+  }
+  if (actual === "0×0" && lastError) throw lastError;
+  throw createLocalizedError(settings.language, "error.invalidImageSize", {
+    expected: `${page.width}×${page.height}`,
+    actual,
+  });
+}
+
+async function captureRecordPages(window, pages) {
+  const debuggerSession = window.webContents.debugger;
+  const attachedHere = !debuggerSession.isAttached();
+  if (attachedHere) debuggerSession.attach("1.3");
+  try {
+    await debuggerSession.sendCommand("Page.enable");
+    const images = [];
+    for (const page of pages) {
+      images.push(await capturePageWithDebugger(debuggerSession, page));
+    }
+    return images;
+  } catch (error) {
+    if (pages.length > 1) throw error;
+    return [await capturePageWithRetry(window, pages[0])];
+  } finally {
+    if (attachedHere && debuggerSession.isAttached()) {
+      debuggerSession.detach();
+    }
+  }
+}
+
 async function captureRecord(record) {
   if (record.images?.length === record.pages.length) return record.images;
   if (record.layout?.tooLong) {
@@ -490,11 +574,7 @@ async function captureRecord(record) {
       loadedRenderRevision === record.revision
         ? createRenderWindow(record.options.width)
         : await loadRenderRecord(record);
-    const images = [];
-
-    for (const page of record.pages) {
-      images.push(await capturePageWithRetry(window, page));
-    }
+    const images = await captureRecordPages(window, record.pages);
     record.images = images;
     return images;
   });

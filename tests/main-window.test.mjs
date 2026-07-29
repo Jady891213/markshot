@@ -28,15 +28,20 @@ test("tray single click opens the menu and double click opens the window", () =>
   assert.match(source, /tray\.popUpContextMenu\(trayMenu\)/);
 });
 
-test("long-image capture uses scale-aware viewports and retries transient failures", () => {
+test("long-image capture uses document-coordinate clips and retries transient failures", () => {
+  assert.match(source, /async function capturePageWithDebugger\(debuggerSession, page\)/);
+  assert.match(source, /Page\.captureScreenshot/);
+  assert.match(source, /captureBeyondViewport: true/);
+  assert.match(source, /y: page\.y \/ renderCaptureScaleFactor/);
+  assert.match(source, /attempt === 0 \? 0 : Math\.ceil\(renderCaptureScaleFactor\)/);
+  assert.match(source, /\(page\.height \+ capturePadding\)/);
+  assert.match(source, /debuggerSession\.detach\(\)/);
   assert.match(source, /async function capturePageWithRetry\(window, page\)/);
   assert.match(source, /for \(let attempt = 0; attempt < 3; attempt \+= 1\)/);
   assert.match(source, /zoomFactor: 1 \/ renderCaptureScaleFactor/);
-  assert.match(source, /Math\.ceil\(page\.height \/ renderCaptureScaleFactor\)/);
-  assert.match(source, /await window\.webContents\.capturePage\([\s\S]*?stayHidden: true/);
   assert.match(
     source,
-    /captured\.crop\([\s\S]*?if \(size\.width > 0 && size\.height > 0\)[\s\S]*?captured\.resize\(/,
+    /if \(pages\.length > 1\) throw error;[\s\S]*?capturePageWithRetry/,
   );
 });
 
