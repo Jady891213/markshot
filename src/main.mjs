@@ -11,6 +11,7 @@ import {
   Menu,
   nativeImage,
   screen,
+  shell,
   Tray,
 } from "electron";
 import {
@@ -31,7 +32,11 @@ import {
   MAX_DIAGRAM_SOURCE_LENGTH,
   MAX_DIAGRAMS_PER_DOCUMENT,
 } from "./diagrams.mjs";
-import { DocumentLibrary, isMarkdownPath } from "./documents.mjs";
+import {
+  DocumentLibrary,
+  isMarkdownPath,
+  suggestedMarkdownFileName,
+} from "./documents.mjs";
 import {
   createLocalizedError,
   normalizeLanguage,
@@ -588,20 +593,14 @@ async function openMarkdownDialog() {
   return { canceled: false, ...opened };
 }
 
-async function saveInstantDocument({ source, suggestedName } = {}) {
+async function saveInstantDocument({ source } = {}) {
   const markdownSource = String(source || "");
   if (!markdownSource.trim()) {
     throw createLocalizedError(settings.language, "error.emptyInstant");
   }
-  const safeName = String(suggestedName || t("file.instantMarkdown"))
-    .replace(/[\\/:*?"<>|]/g, " ")
-    .trim();
-  const defaultName = /\.m(?:d|arkdown|down)$/i.test(safeName)
-    ? safeName
-    : `${safeName || t("file.instantName")}.md`;
   const result = await dialog.showSaveDialog(mainWindow, {
     title: t("dialog.saveMarkdown"),
-    defaultPath: defaultName,
+    defaultPath: suggestedMarkdownFileName(markdownSource),
     filters: [
       {
         name: t("dialog.markdownDocument"),
@@ -1135,6 +1134,21 @@ function registerIpc() {
   ipcMain.handle("documents:save-instant", (_event, request) =>
     saveInstantDocument(request),
   );
+  ipcMain.handle("documents:show-in-folder", (_event, filePath) => {
+    const target = path.resolve(String(filePath || ""));
+    const snapshot = documentLibrarySnapshot();
+    const known = [...snapshot.opened, ...snapshot.recent].some(
+      (record) => record.path === target,
+    );
+    if (!known) {
+      throw createLocalizedError(
+        settings.language,
+        "error.unknownDocumentPath",
+      );
+    }
+    shell.showItemInFolder(target);
+    return { ok: true };
+  });
   ipcMain.handle("documents:update-instant", (_event, next) => {
     instantDocument = {
       ...instantDocument,

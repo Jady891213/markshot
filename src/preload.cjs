@@ -28,6 +28,8 @@ contextBridge.exposeInMainWorld("replyImage", {
     ),
   saveInstantDocument: (request) =>
     ipcRenderer.invoke("documents:save-instant", request),
+  showItemInFolder: (filePath) =>
+    ipcRenderer.invoke("documents:show-in-folder", filePath),
   updateInstantDocument: (document) =>
     ipcRenderer.invoke("documents:update-instant", document),
   closeDocument: (documentId) =>

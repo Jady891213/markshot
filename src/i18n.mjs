@@ -169,6 +169,9 @@ const translations = Object.freeze({
     "error.settingsFailed": "设置失败：{message}",
     "action.closeDocument": "关闭文档",
     "action.removeRecent": "从最近打开中移除",
+    "action.moreDocument": "更多文档操作",
+    "action.revealInFinder": "在访达中显示",
+    "error.unknownDocumentPath": "无法定位这个文档",
   }),
   en: Object.freeze({
     "app.settings": "Settings",
@@ -338,6 +341,9 @@ const translations = Object.freeze({
     "error.settingsFailed": "Settings failed: {message}",
     "action.closeDocument": "Close document",
     "action.removeRecent": "Remove from Recent",
+    "action.moreDocument": "More document actions",
+    "action.revealInFinder": "Show in Finder",
+    "error.unknownDocumentPath": "This document could not be located",
   }),
 });
 

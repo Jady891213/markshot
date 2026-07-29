@@ -18,6 +18,37 @@ export function isMarkdownPath(filePath) {
   );
 }
 
+function timestampFileName(date) {
+  const parts = [
+    date.getFullYear(),
+    String(date.getMonth() + 1).padStart(2, "0"),
+    String(date.getDate()).padStart(2, "0"),
+  ];
+  const time = [
+    String(date.getHours()).padStart(2, "0"),
+    String(date.getMinutes()).padStart(2, "0"),
+    String(date.getSeconds()).padStart(2, "0"),
+  ];
+  return `markshot_${parts.join("")}_${time.join("")}.md`;
+}
+
+export function suggestedMarkdownFileName(source, date = new Date()) {
+  const heading = String(source || "").match(
+    /^\s{0,3}#(?!#)\s+(.+?)\s*#*\s*$/m,
+  )?.[1];
+  const title = String(heading || "")
+    .replace(/!\[([^\]]*)\]\([^)]*\)/g, "$1")
+    .replace(/\[([^\]]+)\]\([^)]*\)/g, "$1")
+    .replace(/[*_~`]/g, "")
+    .replace(/[\\/:*?"<>|]/g, " ")
+    .replace(/\s+/g, " ")
+    .trim()
+    .replace(/^\.+|\.+$/g, "")
+    .slice(0, 80)
+    .trim();
+  return title ? `${title}.md` : timestampFileName(date);
+}
+
 export function normalizeRecentFiles(input, maximum = MAX_RECENT_FILES) {
   const seen = new Set();
   const normalized = [];

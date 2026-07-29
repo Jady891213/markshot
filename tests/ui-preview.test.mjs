@@ -86,3 +86,11 @@ test("language controls update the live interface without shrinking labels", () 
     /\.mode-switch button,\s*\.view-switch button\s*\{[^}]*white-space: nowrap;/s,
   );
 });
+
+test("reading items use one Finder menu for more and context-click actions", () => {
+  assert.doesNotMatch(script, /documentSubtitle[\s\S]*status\.watching/);
+  assert.match(script, /action\.textContent = "•••"/);
+  assert.match(script, /item\.addEventListener\("contextmenu"/);
+  assert.match(script, /api\.showItemInFolder\(record\.path\)/);
+  assert.match(styles, /\.document-item-menu\s*\{/);
+});

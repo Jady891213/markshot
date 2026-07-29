@@ -46,3 +46,12 @@ test("copy and quick generation compose at most four columns", () => {
     /if \(record\.layout\.tooLong\)[\s\S]*?return \{[\s\S]*?status: "too-long"/,
   );
 });
+
+test("show in Finder only accepts known document paths", () => {
+  assert.match(source, /ipcMain\.handle\("documents:show-in-folder"/);
+  assert.match(
+    source,
+    /const snapshot = documentLibrarySnapshot\(\);[\s\S]*?record\.path === target[\s\S]*?error\.unknownDocumentPath/,
+  );
+  assert.match(source, /shell\.showItemInFolder\(target\)/);
+});

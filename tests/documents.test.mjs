@@ -8,6 +8,7 @@ import {
   isMarkdownPath,
   loadRecentFiles,
   normalizeRecentFiles,
+  suggestedMarkdownFileName,
 } from "../src/documents.mjs";
 
 test("Markdown paths and recent entries are normalized and deduplicated", () => {
@@ -24,6 +25,20 @@ test("Markdown paths and recent entries are normalized and deduplicated", () => 
   assert.deepEqual(
     recent.map((item) => path.basename(item.path)),
     ["a.md", "c.mdown"],
+  );
+});
+
+test("saved Markdown names prefer the title and otherwise use a timestamp", () => {
+  assert.equal(
+    suggestedMarkdownFileName("# **季度报告：** [详情](https://example.com)"),
+    "季度报告： 详情.md",
+  );
+  assert.equal(
+    suggestedMarkdownFileName(
+      "没有一级标题",
+      new Date(2026, 6, 29, 9, 8, 7),
+    ),
+    "markshot_20260729_090807.md",
   );
 });
 

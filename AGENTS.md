@@ -37,6 +37,8 @@
 - When the dark theme is selected, make the desktop document stage and the outline/style panel one continuous dark reader surface with no light outer ring. Keep the fixed desktop reading width and font scale unchanged.
 - Keep the Immediate input and read-only Source views on the same monospace font size and line height.
 - Keep Clear and Paste at the left of the transparent immediate footer. Keep the secondary text action Save Document at its right; saving writes UTF-8 Markdown through a native dialog, opens it in Reading, and clears Immediate only after success.
+- Default saved Markdown filenames to the first level-one title after removing Markdown decorations. If no level-one title exists, use `markshot_YYYYMMDD_HHMMSS.md`.
+- In the Reading sidebar, show only the parent folder below available opened documents; do not display a Watching suffix. Both the three-dot action and context-click open the same document menu, currently containing only Show in Finder.
 - Keep the top-left brand to a single `MarkShot` line without a status subtitle.
 - The background choices are None, Plain, and Soft. None removes canvas padding plus card background decoration so the output is only the themed Markdown content surface.
 - Show the current global shortcut in the app title bar immediately left of a settings icon. Configure it in an in-app modal opened by that icon; do not expose a separate Hide Window button.

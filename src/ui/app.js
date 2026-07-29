@@ -61,6 +61,8 @@ const documents = new Map();
 const documentViewState = new Map();
 const frameRecords = new Map();
 let library = { instant: undefined, opened: [], recent: [] };
+let documentItemMenu;
+let documentItemMenuOwner;
 let settings;
 let currentMode = "instant";
 let activeDocumentId = "instant";
@@ -306,12 +308,59 @@ function documentSubtitle(document) {
   const directory = document.path
     ? document.path.split("/").slice(0, -1).at(-1)
     : "";
-  return `${directory || t("status.localDocument")} · ${t("status.watching")}`;
+  return directory || t("status.localDocument");
+}
+
+function closeDocumentItemMenu() {
+  documentItemMenu?.remove();
+  documentItemMenu = undefined;
+  documentItemMenuOwner?.setAttribute("aria-expanded", "false");
+  documentItemMenuOwner = undefined;
+}
+
+function showDocumentItemMenu(record, owner, point) {
+  closeDocumentItemMenu();
+  const menu = document.createElement("div");
+  menu.className = "document-item-menu";
+  menu.setAttribute("role", "menu");
+
+  const reveal = document.createElement("button");
+  reveal.type = "button";
+  reveal.setAttribute("role", "menuitem");
+  reveal.textContent = t("action.revealInFinder");
+  reveal.addEventListener("click", async (event) => {
+    event.stopPropagation();
+    closeDocumentItemMenu();
+    try {
+      await api.showItemInFolder(record.path);
+    } catch (error) {
+      showToast(t("toast.actionFailed", { message: error.message }), "error");
+    }
+  });
+  menu.append(reveal);
+  document.body.append(menu);
+
+  const anchor = owner.getBoundingClientRect();
+  const left = point?.x ?? anchor.right - menu.offsetWidth;
+  const top = point?.y ?? anchor.bottom + 4;
+  menu.style.left = `${Math.max(
+    8,
+    Math.min(left, window.innerWidth - menu.offsetWidth - 8),
+  )}px`;
+  menu.style.top = `${Math.max(
+    8,
+    Math.min(top, window.innerHeight - menu.offsetHeight - 8),
+  )}px`;
+  documentItemMenu = menu;
+  documentItemMenuOwner = owner;
+  owner.setAttribute("aria-expanded", "true");
+  reveal.focus();
 }
 
 function createDocumentItem(record, { recent = false } = {}) {
-  const item = document.createElement("button");
-  item.type = "button";
+  const item = document.createElement("div");
+  item.tabIndex = 0;
+  item.setAttribute("role", "button");
   item.className = "document-item";
   if (!recent && record.id === activeDocumentId) item.classList.add("active");
   if (!recent && record.status === "missing") item.classList.add("missing");
@@ -335,26 +384,16 @@ function createDocumentItem(record, { recent = false } = {}) {
   const action = document.createElement("button");
   action.type = "button";
   action.className = "item-action";
-  action.title = recent
-    ? t("action.removeRecent")
-    : t("action.closeDocument");
-  action.textContent = "×";
-  action.addEventListener("click", async (event) => {
+  action.title = t("action.moreDocument");
+  action.setAttribute("aria-label", t("action.moreDocument"));
+  action.setAttribute("aria-haspopup", "menu");
+  action.setAttribute("aria-expanded", "false");
+  action.textContent = "•••";
+  action.addEventListener("click", (event) => {
     event.preventDefault();
     event.stopPropagation();
-    try {
-      const next = recent
-        ? await api.removeRecent(record.path)
-        : await api.closeDocument(record.id);
-      applyLibrary(next);
-      if (!recent && record.id === activeDocumentId) {
-        const fallback = library.opened.at(0);
-        if (fallback) activateDocument(fallback.id, { mode: "reading" });
-        else setMode("reading");
-      }
-    } catch (error) {
-      showToast(t("toast.actionFailed", { message: error.message }), "error");
-    }
+    if (documentItemMenuOwner === action) closeDocumentItemMenu();
+    else showDocumentItemMenu(record, action);
   });
 
   item.append(icon, copy, action);
@@ -365,10 +404,24 @@ function createDocumentItem(record, { recent = false } = {}) {
       activateDocument(record.id, { mode: "reading" });
     }
   });
+  item.addEventListener("keydown", (event) => {
+    if (event.key !== "Enter" && event.key !== " ") return;
+    event.preventDefault();
+    item.click();
+  });
+  item.addEventListener("contextmenu", (event) => {
+    event.preventDefault();
+    event.stopPropagation();
+    showDocumentItemMenu(record, action, {
+      x: event.clientX,
+      y: event.clientY,
+    });
+  });
   return item;
 }
 
 function renderDocumentLists() {
+  closeDocumentItemMenu();
   elements.openedDocuments.replaceChildren(
     ...(library.opened.length
       ? library.opened.map((document) => createDocumentItem(document))
@@ -1052,12 +1105,8 @@ async function saveInstant() {
   }
   elements.saveInstant.disabled = true;
   try {
-    const firstHeading =
-      source.match(/^\s*#\s+(.+)$/m)?.[1]?.trim().slice(0, 50) ||
-      t("file.instantName");
     const result = await api.saveInstantDocument({
       source,
-      suggestedName: `${firstHeading}.md`,
     });
     if (result.canceled) return;
     applyLibrary(result.library);
@@ -1312,6 +1361,13 @@ elements.shareToggle.addEventListener("click", (event) => {
 elements.exportPreview.addEventListener("click", exportCurrentPage);
 document.addEventListener("click", (event) => {
   if (!event.target.closest(".share-split")) elements.shareMenu.hidden = true;
+  if (
+    documentItemMenu &&
+    !event.target.closest(".document-item-menu") &&
+    !event.target.closest(".item-action")
+  ) {
+    closeDocumentItemMenu();
+  }
 });
 
 elements.openSettings.addEventListener("click", openSettingsDialog);
@@ -1385,9 +1441,13 @@ window.addEventListener("drop", (event) => {
 window.addEventListener("keydown", (event) => {
   if (event.key === "Escape") {
     elements.shareMenu.hidden = true;
+    closeDocumentItemMenu();
     if (!elements.settingsModal.hidden) closeSettingsDialog();
   }
 });
+
+window.addEventListener("blur", closeDocumentItemMenu);
+window.addEventListener("resize", closeDocumentItemMenu);
 
 function updateAllFrameScales() {
   for (const host of frameRecords.keys()) updateFrameScale(host);
