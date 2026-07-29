@@ -19,6 +19,9 @@ const THEME_CSS = await fs.readFile(
   path.join(PROJECT_DIR, "assets", "theme.css"),
   "utf8",
 );
+const BRAND_WORDMARK_DATA_URL = `data:image/png;base64,${(
+  await fs.readFile(path.join(PROJECT_DIR, "assets", "brand-wordmark.png"))
+).toString("base64")}`;
 
 export const MAX_PAGE_HEIGHT = 14_000;
 export const MAX_IMAGE_COLUMNS = 4;
@@ -327,7 +330,7 @@ export function buildDocument(input) {
   const generatedAt = formatLocalizedDate(options.language);
   const footerBlock = options.showFooter
     ? `<footer class="footer">
-          <span>MarkShot</span>
+          <img class="footer-wordmark" src="${BRAND_WORDMARK_DATA_URL}" alt="MarkShot">
           <span>${escapeHtml(generatedAt)}</span>
         </footer>`
     : "";

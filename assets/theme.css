@@ -371,6 +371,7 @@ input[type="checkbox"] {
 
 .footer {
   display: flex;
+  align-items: center;
   justify-content: space-between;
   gap: 20px;
   margin-top: 1.6em;
@@ -379,6 +380,19 @@ input[type="checkbox"] {
   border-top: 1px solid var(--border);
   font-size: calc(var(--body-font-size, 29px) * 0.69);
   line-height: 1.4;
+}
+
+.footer .footer-wordmark {
+  width: 118px;
+  height: 26px;
+  margin: 0;
+  border-radius: 0;
+  object-fit: cover;
+  object-position: center;
+}
+
+html[data-theme="dark"] .footer .footer-wordmark {
+  filter: grayscale(1) brightness(0) invert(1);
 }
 
 img {

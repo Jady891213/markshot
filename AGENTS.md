@@ -41,7 +41,7 @@
 - Keep Clear and Paste at the left of the transparent immediate footer. Keep the secondary text action Save Document at its right; saving writes UTF-8 Markdown through a native dialog, opens it in Reading, and clears Immediate only after success.
 - Default saved Markdown filenames to the first level-one title after removing Markdown decorations. If no level-one title exists, use `markshot_YYYYMMDD_HHMMSS.md`.
 - In the Reading sidebar, show only the parent folder below available opened documents; do not display a Watching suffix. Both the three-dot action and context-click open the same document menu, currently containing only Show in Finder.
-- Keep the top-left brand to a single `MarkShot` line without a status subtitle.
+- Use the selected B wordmark as a lightweight replacement for the top-left App icon plus plain `MarkShot` text, and reuse the same wordmark in the optional image footer. Do not change the app icon, title-bar height, workspace structure, or add a brand subtitle.
 - The background choices are None, Plain, and Soft. None removes canvas padding plus card background decoration so the output is only the themed Markdown content surface.
 - Show the current global shortcut in the app title bar immediately left of a settings icon. Configure it in an in-app modal opened by that icon; do not expose a separate Hide Window button.
 - Keep `contextIsolation: true`, `nodeIntegration: false`, and expose only the narrow preload API.

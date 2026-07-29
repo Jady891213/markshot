@@ -63,10 +63,10 @@ codesign --verify --deep --strict --verbose=2 "out/MarkShot-darwin-arm64/MarkSho
 
 ## 发布
 
-源码由 `main` 分支维护。编译后的 `.app`、ZIP 和 DMG 不提交到 Git 仓库；当前公开版本仍为 `v0.3.0`，在对应的 GitHub Release 中提供：
+源码由 `main` 分支维护。编译后的 `.app`、ZIP 和 DMG 不提交到 Git 仓库；当前公开版本为 `v0.4.0`，在对应的 GitHub Release 中提供：
 
-- `MarkShot-v0.3.0-macOS-arm64.zip`：解压后直接获得 MarkShot.app
-- `MarkShot-v0.3.0-macOS-arm64.dmg`：标准 macOS 磁盘映像
+- `MarkShot-v0.4.0-macOS-arm64.zip`：解压后直接获得 MarkShot.app
+- `MarkShot-v0.4.0-macOS-arm64.dmg`：标准 macOS 磁盘映像
 
 当前构建使用临时签名，尚未进行 Apple Developer ID 签名和公证。其他用户首次运行公开下载版本时，可能遇到 macOS Gatekeeper 提示。
 

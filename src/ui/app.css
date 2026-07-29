@@ -111,20 +111,14 @@ svg {
 }
 
 .brand {
-  gap: 10px;
+  min-width: 118px;
 }
 
-.brand-mark {
-  width: 30px;
-  height: 30px;
-  border-radius: 9px;
-  box-shadow: 0 2px 7px rgba(37, 52, 76, 0.16);
-}
-
-.brand h1 {
-  margin: 0;
-  font-size: 16px;
-  line-height: 1;
+.brand-wordmark {
+  width: 132px;
+  height: 38px;
+  object-fit: cover;
+  object-position: center;
 }
 
 .header-tools {

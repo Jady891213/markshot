@@ -147,6 +147,8 @@ test("document generation and page splitting remain deterministic", () => {
   assert.match(result.html, /--canvas-width: 1080px/);
   assert.match(result.html, /<h1>中文标题<\/h1>/);
   assert.match(result.html, /<footer class="footer">/);
+  assert.match(result.html, /class="footer-wordmark"/);
+  assert.match(result.html, /src="data:image\/png;base64,/);
   assert.equal(result.revision.length, 24);
 
   const english = buildDocument({
