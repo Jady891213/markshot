@@ -183,6 +183,54 @@
         </aside>
 
         <section class="content-scroll" id="content-scroll">
+          <div
+            class="preview-search"
+            id="preview-search"
+            role="search"
+            aria-label="搜索预览"
+            data-i18n-aria-label="search.label"
+            hidden
+          >
+            <input
+              id="preview-search-input"
+              type="search"
+              autocomplete="off"
+              spellcheck="false"
+              placeholder="搜索预览内容"
+              data-i18n-placeholder="search.placeholder"
+            />
+            <span class="preview-search-count" id="preview-search-count">0 / 0</span>
+            <button
+              id="preview-search-previous"
+              type="button"
+              aria-label="上一个匹配项"
+              title="上一个匹配项"
+              data-i18n-aria-label="search.previous"
+              data-i18n-title="search.previous"
+            >
+              ↑
+            </button>
+            <button
+              id="preview-search-next"
+              type="button"
+              aria-label="下一个匹配项"
+              title="下一个匹配项"
+              data-i18n-aria-label="search.next"
+              data-i18n-title="search.next"
+            >
+              ↓
+            </button>
+            <button
+              id="preview-search-close"
+              type="button"
+              aria-label="关闭搜索"
+              title="关闭搜索"
+              data-i18n-aria-label="search.close"
+              data-i18n-title="search.close"
+            >
+              ×
+            </button>
+          </div>
           <section class="workbench">
             <div class="view-area">
               <section class="view active" data-view-panel="preview">

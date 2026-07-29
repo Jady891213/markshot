@@ -29,6 +29,7 @@
 - Watch opened local files with Node `fs.watch` and debounce refreshes. If a file disappears, keep its last content and mark it unavailable.
 - Persist at most 20 deduplicated recent paths and timestamps. Do not persist document bodies, immediate content, rendered HTML, previews, or image history.
 - Keep the document body and right outline/style panel in one scroll container with the scrollbar at the far right. Style replaces Outline in the same position.
+- Command+F opens a preview-only search bar for the current rendered document. Highlight every match without changing the Markdown or exported image, support previous/next navigation plus Enter/Shift+Enter, and close with Escape.
 - Use flat radio-card choices with compact icons for profile, theme, and background instead of selects.
 - The optional image title is gated by a local switch and is never persisted. The MarkShot footer switch is a persisted render setting used by both managed preview/export and quick generation.
 - Plain and soft backgrounds must be visibly distinct in the shared final render CSS; preview and exported/copied images must use that same render document.
@@ -83,6 +84,7 @@ After validation, replace the sibling `MarkShot.app` and remove the Forge `out/`
 - Test headings, nested lists, tasks, tables, blockquotes, footnotes, code highlighting, links, images, and unsafe HTML removal.
 - Test file selection, Command+O, multi-file drag-and-drop, Open With, repeated-path deduplication, recent ordering, file refresh, and missing-file recovery.
 - Verify Immediate and Reading restore their own active document, view, scroll position, and heading; Preview, Split, and Source must remain read-only.
+- Verify Command+F from both the app chrome and focused preview iframe, including Chinese/English queries, no-result state, Enter/Shift+Enter navigation, multi-column previews, and Escape cleanup.
 - Verify mobile 1080 px and desktop 1600 px; desktop preview stays at 800 px and does not grow with the window, while legacy or custom profile inputs normalize to mobile.
 - Verify the global shortcut while another app has focus, successful clipboard image paste, 2–4 column composition, over-four-column refusal, shortcut conflict handling, and no disk output.
 - Verify Mermaid, Markmap, Graphviz/DOT, Vega-Lite, and ECharts fences in both themes, including safe fallback output for invalid or externally linked specifications.

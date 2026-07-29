@@ -640,6 +640,67 @@ svg {
   background: white;
 }
 
+.preview-search {
+  position: fixed;
+  z-index: 30;
+  top: calc(var(--header-height) + var(--operation-height) + 12px);
+  right: calc(var(--right-width) + 18px);
+  display: flex;
+  align-items: center;
+  width: 342px;
+  height: 38px;
+  padding: 4px;
+  background: rgba(255, 255, 255, 0.98);
+  border: 1px solid #d7dee8;
+  border-radius: 9px;
+  box-shadow: 0 10px 30px rgba(15, 23, 42, 0.16);
+}
+
+.preview-search input {
+  min-width: 0;
+  height: 28px;
+  flex: 1;
+  padding: 0 8px;
+  color: #253247;
+  background: transparent;
+  border: 0;
+  outline: 0;
+  font-size: 12px;
+}
+
+.preview-search input::-webkit-search-cancel-button {
+  display: none;
+}
+
+.preview-search-count {
+  flex: 0 0 56px;
+  color: #7d899a;
+  text-align: center;
+  font-size: 10px;
+  white-space: nowrap;
+}
+
+.preview-search button {
+  display: grid;
+  width: 28px;
+  height: 28px;
+  padding: 0;
+  place-items: center;
+  color: #5d6a7c;
+  background: transparent;
+  border: 0;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 15px;
+}
+
+.preview-search button:hover,
+.preview-search button:focus-visible {
+  color: #28436e;
+  background: #edf2fa;
+  outline: none;
+}
+
 .content-scroll[data-reader-theme="dark"] {
   --line: #2a3443;
   --line-soft: #202a38;
@@ -649,6 +710,27 @@ svg {
   --accent-soft: #1d3152;
   color: var(--text);
   background: #0b1018;
+}
+
+.content-scroll[data-reader-theme="dark"] .preview-search {
+  background: rgba(22, 30, 42, 0.98);
+  border-color: #344052;
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.36);
+}
+
+.content-scroll[data-reader-theme="dark"] .preview-search input {
+  color: #e8edf5;
+}
+
+.content-scroll[data-reader-theme="dark"] .preview-search-count,
+.content-scroll[data-reader-theme="dark"] .preview-search button {
+  color: #a6b2c3;
+}
+
+.content-scroll[data-reader-theme="dark"] .preview-search button:hover,
+.content-scroll[data-reader-theme="dark"] .preview-search button:focus-visible {
+  color: #e8edf5;
+  background: #253247;
 }
 
 .workbench {

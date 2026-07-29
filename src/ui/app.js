@@ -22,6 +22,12 @@ const elements = {
   contentScroll: document.getElementById("content-scroll"),
   previewHost: document.getElementById("preview-host"),
   splitHost: document.getElementById("split-host"),
+  previewSearch: document.getElementById("preview-search"),
+  previewSearchInput: document.getElementById("preview-search-input"),
+  previewSearchCount: document.getElementById("preview-search-count"),
+  previewSearchPrevious: document.getElementById("preview-search-previous"),
+  previewSearchNext: document.getElementById("preview-search-next"),
+  previewSearchClose: document.getElementById("preview-search-close"),
   splitSource: document.getElementById("split-source"),
   sourceContent: document.getElementById("source-content"),
   emptyState: document.getElementById("empty-state"),
@@ -78,6 +84,8 @@ let toastTimer;
 let renderSequence = 0;
 let dragDepth = 0;
 let outlineTargets = [];
+let previewSearchMatches = [];
+let previewSearchIndex = -1;
 let pendingScrollRestore = 0;
 let instantSyntheticSource = false;
 
@@ -156,6 +164,224 @@ function wheelDeltaPixels(event, scrollContainer) {
     return event.deltaY * scrollContainer.clientHeight;
   }
   return event.deltaY;
+}
+
+function previewFrames(record) {
+  return record?.frames || (record?.frame ? [record.frame] : []);
+}
+
+function clearSearchHighlights(record) {
+  for (const frame of previewFrames(record)) {
+    const frameDocument = frame.contentDocument;
+    const root = frameDocument?.querySelector(".content");
+    if (!root) continue;
+    root.querySelectorAll("mark[data-markshot-search-index]").forEach((mark) => {
+      mark.replaceWith(frameDocument.createTextNode(mark.textContent || ""));
+    });
+    root.normalize();
+  }
+}
+
+function highlightSearchDocument(frameDocument, query) {
+  const root = frameDocument?.querySelector(".content");
+  if (!root || !query) return [];
+  if (!frameDocument.querySelector("style[data-markshot-search-style]")) {
+    const style = frameDocument.createElement("style");
+    style.dataset.markshotSearchStyle = "";
+    style.textContent = `
+      mark[data-markshot-search-index] {
+        padding: 0;
+        color: inherit;
+        background: #fde047;
+        border-radius: 2px;
+        box-shadow: 0 0 0 1px rgba(161, 98, 7, 0.18);
+      }
+      mark[data-markshot-search-index].markshot-search-current {
+        background: #fb923c;
+        box-shadow: 0 0 0 2px rgba(194, 65, 12, 0.42);
+      }
+    `;
+    frameDocument.head.append(style);
+  }
+
+  const normalizedQuery = query.toLocaleLowerCase(currentLanguage());
+  const textNodes = [];
+  const walker = frameDocument.createTreeWalker(
+    root,
+    NodeFilter.SHOW_TEXT,
+    {
+      acceptNode(node) {
+        const parent = node.parentElement;
+        if (
+          !node.nodeValue ||
+          !parent ||
+          parent.closest("mark[data-markshot-search-index]") ||
+          ["SCRIPT", "STYLE", "NOSCRIPT"].includes(parent.tagName)
+        ) {
+          return NodeFilter.FILTER_REJECT;
+        }
+        return node.nodeValue
+          .toLocaleLowerCase(currentLanguage())
+          .includes(normalizedQuery)
+          ? NodeFilter.FILTER_ACCEPT
+          : NodeFilter.FILTER_REJECT;
+      },
+    },
+  );
+  while (walker.nextNode()) textNodes.push(walker.currentNode);
+
+  const matches = [];
+  for (const textNode of textNodes) {
+    const text = textNode.nodeValue;
+    const normalizedText = text.toLocaleLowerCase(currentLanguage());
+    const fragment = frameDocument.createDocumentFragment();
+    let cursor = 0;
+    let matchAt = normalizedText.indexOf(normalizedQuery);
+    while (matchAt >= 0) {
+      if (matchAt > cursor) {
+        fragment.append(frameDocument.createTextNode(text.slice(cursor, matchAt)));
+      }
+      const mark = frameDocument.createElement("mark");
+      mark.dataset.markshotSearchIndex = String(matches.length);
+      mark.textContent = text.slice(matchAt, matchAt + query.length);
+      matches.push(mark);
+      fragment.append(mark);
+      cursor = matchAt + query.length;
+      matchAt = normalizedText.indexOf(normalizedQuery, cursor);
+    }
+    if (cursor < text.length) {
+      fragment.append(frameDocument.createTextNode(text.slice(cursor)));
+    }
+    textNode.replaceWith(fragment);
+  }
+  return matches;
+}
+
+function updatePreviewSearchCount() {
+  const total = previewSearchMatches.length;
+  const current = previewSearchIndex >= 0 ? previewSearchIndex + 1 : 0;
+  elements.previewSearchCount.textContent = `${current} / ${total}`;
+  elements.previewSearchPrevious.disabled = !total;
+  elements.previewSearchNext.disabled = !total;
+}
+
+function scrollToPreviewSearchMatch(mark) {
+  const record = activeFrameRecord();
+  const frame = record?.frame;
+  if (!record || !frame || !mark) return;
+  const documentOffset =
+    mark.getBoundingClientRect().top + (frame.contentWindow?.scrollY || 0);
+
+  if (record.pages?.length) {
+    const page =
+      record.pages.find(
+        ({ y, height }) =>
+          documentOffset >= y && documentOffset < y + height,
+      ) || record.pages.at(-1);
+    const hostRect = record.host.getBoundingClientRect();
+    const scrollRect = elements.contentScroll.getBoundingClientRect();
+    const hostTop =
+      hostRect.top - scrollRect.top + elements.contentScroll.scrollTop;
+    elements.contentScroll.scrollTo({
+      left: Math.max(
+        0,
+        page.index * (record.scaleWidth || page.width) * record.scale,
+      ),
+      top: Math.max(
+        0,
+        hostTop + (documentOffset - page.y) * record.scale - 52,
+      ),
+      behavior: "smooth",
+    });
+    return;
+  }
+
+  if (record.scrollContainer) {
+    record.scrollContainer.scrollTo({
+      top: Math.max(0, documentOffset * record.scale - 38),
+      behavior: "smooth",
+    });
+    return;
+  }
+
+  const hostRect = record.host.getBoundingClientRect();
+  const scrollRect = elements.contentScroll.getBoundingClientRect();
+  const hostTop =
+    hostRect.top - scrollRect.top + elements.contentScroll.scrollTop;
+  elements.contentScroll.scrollTo({
+    top: Math.max(0, hostTop + documentOffset * record.scale - 52),
+    behavior: "smooth",
+  });
+}
+
+function activatePreviewSearchMatch(index, { scroll = true } = {}) {
+  const total = previewSearchMatches.length;
+  previewSearchIndex = total ? (index + total) % total : -1;
+  const record = activeFrameRecord();
+  for (const frame of previewFrames(record)) {
+    const frameDocument = frame.contentDocument;
+    frameDocument
+      ?.querySelectorAll("mark[data-markshot-search-index]")
+      .forEach((mark) => {
+        mark.classList.toggle(
+          "markshot-search-current",
+          Number(mark.dataset.markshotSearchIndex) === previewSearchIndex,
+        );
+      });
+  }
+  updatePreviewSearchCount();
+  if (scroll && previewSearchIndex >= 0) {
+    scrollToPreviewSearchMatch(previewSearchMatches[previewSearchIndex]);
+  }
+}
+
+function applyPreviewSearch({ scroll = false } = {}) {
+  const record = activeFrameRecord();
+  clearSearchHighlights(record);
+  previewSearchMatches = [];
+  previewSearchIndex = -1;
+  const query = elements.previewSearchInput.value;
+  if (!record || !query) {
+    updatePreviewSearchCount();
+    return;
+  }
+
+  for (const frame of previewFrames(record)) {
+    const matches = highlightSearchDocument(frame.contentDocument, query);
+    if (frame === record.frame) previewSearchMatches = matches;
+  }
+  activatePreviewSearchMatch(previewSearchMatches.length ? 0 : -1, { scroll });
+}
+
+function openPreviewSearch() {
+  if (!currentPreview) return;
+  if (currentView === "source") setView("preview");
+  elements.previewSearch.hidden = false;
+  requestAnimationFrame(() => {
+    elements.previewSearchInput.focus();
+    elements.previewSearchInput.select();
+    if (elements.previewSearchInput.value) applyPreviewSearch();
+  });
+}
+
+function closePreviewSearch() {
+  for (const record of frameRecords.values()) clearSearchHighlights(record);
+  previewSearchMatches = [];
+  previewSearchIndex = -1;
+  elements.previewSearchInput.value = "";
+  elements.previewSearch.hidden = true;
+  updatePreviewSearchCount();
+}
+
+function handlePreviewSearchShortcut(event) {
+  if (!event.metaKey || event.altKey || event.key.toLowerCase() !== "f") {
+    return false;
+  }
+  if (!currentPreview) return false;
+  event.preventDefault();
+  event.stopPropagation();
+  openPreviewSearch();
+  return true;
 }
 
 function currentRenderOptions() {
@@ -504,6 +730,9 @@ function setMode(mode) {
 
 function setView(view, { render = true, save = true } = {}) {
   if (!["preview", "split", "source"].includes(view)) return;
+  if (view === "source" && !elements.previewSearch.hidden) {
+    closePreviewSearch();
+  }
   if (save) saveCurrentState();
   currentView = view;
   currentState().view = view;
@@ -526,6 +755,7 @@ function activateDocument(
 ) {
   const document = documents.get(documentId);
   if (!document) return;
+  if (activeDocumentId !== documentId) closePreviewSearch();
   if (!preserveState) saveCurrentState();
   activeDocumentId = documentId;
   currentMode = mode || (document.kind === "local" ? "reading" : "instant");
@@ -564,6 +794,7 @@ function scheduleRender(delay = 260) {
 }
 
 function clearPreview() {
+  closePreviewSearch();
   currentPreview = undefined;
   releaseFrame(elements.previewHost);
   releaseFrame(elements.splitHost);
@@ -714,6 +945,10 @@ function mountFrame(host, preview) {
           if (event.target.closest("a")) event.preventDefault();
         });
         frame.contentWindow.addEventListener(
+          "keydown",
+          handlePreviewSearchShortcut,
+        );
+        frame.contentWindow.addEventListener(
           "wheel",
           (event) => {
             if (activeFrameHost() !== host || event.ctrlKey || !event.deltaY) {
@@ -735,6 +970,12 @@ function mountFrame(host, preview) {
       ) {
         buildOutline(host);
         restoreCurrentScroll();
+        if (
+          !elements.previewSearch.hidden &&
+          elements.previewSearchInput.value
+        ) {
+          applyPreviewSearch();
+        }
       }
     },
     { once: true },
@@ -770,6 +1011,10 @@ function mountColumnFrames(host, preview) {
             if (event.target.closest("a")) event.preventDefault();
           });
           frame.contentWindow.addEventListener(
+            "keydown",
+            handlePreviewSearchShortcut,
+          );
+          frame.contentWindow.addEventListener(
             "wheel",
             (event) => {
               if (activeFrameHost() !== host || event.ctrlKey) return;
@@ -799,6 +1044,13 @@ function mountColumnFrames(host, preview) {
         ) {
           buildOutline(host);
           restoreCurrentScroll();
+        }
+        if (
+          activeFrameHost() === host &&
+          !elements.previewSearch.hidden &&
+          elements.previewSearchInput.value
+        ) {
+          applyPreviewSearch();
         }
       },
       { once: true },
@@ -1359,6 +1611,23 @@ elements.shareToggle.addEventListener("click", (event) => {
   elements.shareMenu.hidden = !elements.shareMenu.hidden;
 });
 elements.exportPreview.addEventListener("click", exportCurrentPage);
+elements.previewSearchInput.addEventListener("input", () => {
+  applyPreviewSearch({ scroll: true });
+});
+elements.previewSearchInput.addEventListener("keydown", (event) => {
+  if (event.key !== "Enter") return;
+  event.preventDefault();
+  activatePreviewSearchMatch(
+    previewSearchIndex + (event.shiftKey ? -1 : 1),
+  );
+});
+elements.previewSearchPrevious.addEventListener("click", () => {
+  activatePreviewSearchMatch(previewSearchIndex - 1);
+});
+elements.previewSearchNext.addEventListener("click", () => {
+  activatePreviewSearchMatch(previewSearchIndex + 1);
+});
+elements.previewSearchClose.addEventListener("click", closePreviewSearch);
 document.addEventListener("click", (event) => {
   if (!event.target.closest(".share-split")) elements.shareMenu.hidden = true;
   if (
@@ -1439,7 +1708,13 @@ window.addEventListener("drop", (event) => {
 });
 
 window.addEventListener("keydown", (event) => {
+  if (handlePreviewSearchShortcut(event)) return;
   if (event.key === "Escape") {
+    if (!elements.previewSearch.hidden) {
+      event.preventDefault();
+      closePreviewSearch();
+      return;
+    }
     elements.shareMenu.hidden = true;
     closeDocumentItemMenu();
     if (!elements.settingsModal.hidden) closeSettingsDialog();

@@ -94,3 +94,20 @@ test("reading items use one Finder menu for more and context-click actions", () 
   assert.match(script, /api\.showItemInFolder\(record\.path\)/);
   assert.match(styles, /\.document-item-menu\s*\{/);
 });
+
+test("Command+F searches the current preview without changing exported HTML", () => {
+  assert.match(html, /id="preview-search-input"/);
+  assert.match(html, /id="preview-search-previous"/);
+  assert.match(html, /id="preview-search-next"/);
+  assert.match(script, /function handlePreviewSearchShortcut\(event\)/);
+  assert.match(
+    script,
+    /event\.metaKey[\s\S]*?event\.key\.toLowerCase\(\) !== "f"/,
+  );
+  assert.match(script, /function highlightSearchDocument\(frameDocument, query\)/);
+  assert.match(script, /mark\.dataset\.markshotSearchIndex/);
+  assert.match(script, /frame\.contentWindow\.addEventListener\(\s*"keydown"/s);
+  assert.match(script, /event\.shiftKey \? -1 : 1/);
+  assert.match(styles, /\.preview-search\s*\{/);
+  assert.doesNotMatch(script, /preview\.previewHtml\s*=/);
+});
