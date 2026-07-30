@@ -98,6 +98,15 @@ export async function saveRecentFiles(filePath, recentFiles) {
   return normalized;
 }
 
+async function recentFileStatus(filePath) {
+  try {
+    const stat = await fs.stat(filePath);
+    return stat.isFile() ? "available" : "missing";
+  } catch {
+    return "missing";
+  }
+}
+
 function documentId(filePath) {
   return `local-${crypto
     .createHash("sha1")
@@ -130,12 +139,14 @@ export class DocumentLibrary {
     this.getLanguage = getLanguage;
     this.documents = new Map();
     this.recentFiles = [];
+    this.recentStatus = new Map();
     this.watchers = new Map();
     this.refreshTimers = new Map();
   }
 
   async initialize() {
     this.recentFiles = await loadRecentFiles(this.recentPath);
+    await this.refreshRecentStatuses();
     return this.snapshot();
   }
 
@@ -146,7 +157,10 @@ export class DocumentLibrary {
       opened,
       recent: this.recentFiles
         .filter((item) => !openedPaths.has(item.path))
-        .map((item) => ({ ...item })),
+        .map((item) => ({
+          ...item,
+          status: this.recentStatus.get(item.path) || "available",
+        })),
     };
   }
 
@@ -166,6 +180,7 @@ export class DocumentLibrary {
       try {
         documents.push(await this.openPath(candidate));
       } catch (error) {
+        await this.refreshRecentStatus(candidate);
         errors.push({
           path: String(candidate),
           error: error.message,
@@ -188,7 +203,10 @@ export class DocumentLibrary {
       (record) => record.path === resolvedPath,
     );
     if (existing) {
-      await this.touchRecent(resolvedPath);
+      await this.touchRecent(
+        resolvedPath,
+        existing.status === "missing" ? "missing" : "available",
+      );
       return publicDocument(existing);
     }
 
@@ -210,19 +228,47 @@ export class DocumentLibrary {
     };
     this.documents.set(record.id, record);
     this.startWatcher(record);
-    await this.touchRecent(resolvedPath);
+    await this.touchRecent(resolvedPath, "available");
     return publicDocument(record);
   }
 
-  async touchRecent(filePath) {
+  async touchRecent(filePath, status = "available") {
     const openedAt = Date.now();
     this.recentFiles = normalizeRecentFiles([
       { path: filePath, openedAt },
       ...this.recentFiles.filter((item) => item.path !== filePath),
     ]);
+    this.recentStatus.set(filePath, status);
+    const currentPaths = new Set(this.recentFiles.map((item) => item.path));
+    for (const knownPath of this.recentStatus.keys()) {
+      if (!currentPaths.has(knownPath)) this.recentStatus.delete(knownPath);
+    }
     this.recentFiles = await saveRecentFiles(
       this.recentPath,
       this.recentFiles,
+    );
+  }
+
+  async refreshRecentStatus(filePath) {
+    const resolvedPath = path.resolve(String(filePath));
+    const entry = this.recentFiles.find(
+      (item) => item.path === resolvedPath,
+    );
+    if (!entry) return;
+    this.recentStatus.set(
+      entry.path,
+      await recentFileStatus(entry.path),
+    );
+  }
+
+  async refreshRecentStatuses() {
+    await Promise.all(
+      this.recentFiles.map(async (item) => {
+        this.recentStatus.set(
+          item.path,
+          await recentFileStatus(item.path),
+        );
+      }),
     );
   }
 
@@ -291,12 +337,18 @@ export class DocumentLibrary {
     const record = this.documents.get(documentIdValue);
     const existed = this.documents.delete(documentIdValue);
     this.stopWatcher(documentIdValue);
-    if (record) await this.touchRecent(record.path);
+    if (record) {
+      await this.touchRecent(
+        record.path,
+        record.status === "missing" ? "missing" : "available",
+      );
+    }
     return existed;
   }
 
   async removeRecent(filePath) {
     const resolvedPath = path.resolve(String(filePath));
+    this.recentStatus.delete(resolvedPath);
     this.recentFiles = this.recentFiles.filter(
       (item) => item.path !== resolvedPath,
     );

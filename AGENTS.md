@@ -27,11 +27,11 @@
 - Keep the workspace unified around two sidebar modes: `即时` for editable pasted content and `阅读` for read-only local Markdown documents. Do not add horizontal document tabs.
 - Only the fixed immediate textarea is editable. Preview, Split, Source, and every local document view are read-only.
 - Preserve separate mode and per-document view state, scroll position, and active heading. Opening a local file switches to `阅读`; switching back restores the previous immediate or reading position.
-- The reading sidebar contains explicit Open Markdown, Open, and Recent stacks. Open and Recent are mutually exclusive: opening a recent file appends it to Open, while closing an open file moves it to the front of Recent. Support multi-file selection, drag-and-drop, Command+O, second-instance file arguments, and macOS Open With.
+- The reading sidebar contains explicit Open Markdown, Open, and Recent stacks. Open and Recent are mutually exclusive: opening a recent file appends it to Open, while closing an open file moves it to the front of Recent. Open cards have a quick close action; Recent cards have a quick remove-record action that never deletes the local file.
 - Show a clear full-window affordance only while external Markdown files are hovering over the app. Open valid dropped files on release, and keep internal sidebar drag-out from triggering that affordance.
 - Make every available Opened and Recent document card a native file drag source. Dragging a card into Finder, chat, mail, or another macOS app must transfer the original Markdown file, never plain text or a MarkShot-only payload.
 - Watch opened local files with Node `fs.watch` and debounce refreshes. If a file disappears, keep its last content and mark it unavailable.
-- Persist at most 20 deduplicated recent paths and timestamps. Do not persist document bodies, immediate content, rendered HTML, previews, or image history.
+- Persist at most 20 deduplicated recent paths and timestamps. Check recent paths on startup and mark unavailable records in the sidebar; users can remove stale records without touching local files. Do not persist document bodies, immediate content, rendered HTML, previews, or image history.
 - Keep the document body and right outline/style panel in one scroll container with the scrollbar at the far right. Style replaces Outline in the same position.
 - Command+F opens a preview-only search bar for the current rendered document. Highlight every match without changing the Markdown or exported image, support previous/next navigation plus Enter/Shift+Enter, and close with Escape.
 - Use flat radio-card choices with compact icons for profile, theme, and background instead of selects.

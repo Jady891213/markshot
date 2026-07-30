@@ -92,6 +92,7 @@ test("document library opens, watches and marks local Markdown missing", async (
     assert.equal(library.snapshot().opened.length, 0);
     assert.equal(library.snapshot().recent.length, 1);
     assert.equal(library.snapshot().recent[0].path, resolvedMarkdownPath);
+    assert.equal(library.snapshot().recent[0].status, "missing");
   } finally {
     library.dispose();
     await fs.rm(directory, { recursive: true, force: true });
@@ -166,4 +167,44 @@ test("recent list keeps only the newest twenty Markdown paths", () => {
   assert.equal(recent.length, 20);
   assert.equal(path.basename(recent[0].path), "0.md");
   assert.equal(path.basename(recent.at(-1).path), "19.md");
+});
+
+test("recent files expose missing status and removal keeps the local file", async () => {
+  const directory = await fs.mkdtemp(
+    path.join(os.tmpdir(), "MarkShot Recent Status TMP to delete."),
+  );
+  const existingPath = path.join(directory, "仍然存在.md");
+  const missingPath = path.join(directory, "已经失效.md");
+  const recentPath = path.join(directory, "recent-documents.json");
+  const library = new DocumentLibrary({ recentPath });
+
+  try {
+    await fs.writeFile(existingPath, "# 仍然存在", "utf8");
+    await fs.writeFile(
+      recentPath,
+      JSON.stringify([
+        { path: existingPath, openedAt: 2 },
+        { path: missingPath, openedAt: 1 },
+      ]),
+      "utf8",
+    );
+
+    await library.initialize();
+    let snapshot = library.snapshot();
+    assert.deepEqual(
+      snapshot.recent.map((entry) => entry.status),
+      ["available", "missing"],
+    );
+
+    await library.removeRecent(existingPath);
+    snapshot = library.snapshot();
+    assert.deepEqual(
+      snapshot.recent.map((entry) => path.basename(entry.path)),
+      ["已经失效.md"],
+    );
+    assert.equal(await fs.readFile(existingPath, "utf8"), "# 仍然存在");
+  } finally {
+    library.dispose();
+    await fs.rm(directory, { recursive: true, force: true });
+  }
 });

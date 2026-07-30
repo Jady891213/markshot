@@ -505,7 +505,7 @@ svg {
   cursor: grab;
 }
 
-.document-item.has-close {
+.document-item.has-quick-action {
   padding-right: 58px;
 }
 
@@ -573,6 +573,18 @@ svg {
   color: var(--danger);
 }
 
+.document-item.missing {
+  border-color: rgba(213, 82, 82, 0.24);
+}
+
+.document-item.missing .document-copy b {
+  color: var(--danger);
+}
+
+.document-item.missing .document-copy small {
+  color: #b16767;
+}
+
 .document-actions {
   position: absolute;
   top: 50%;
@@ -584,7 +596,8 @@ svg {
 }
 
 .item-action,
-.item-close {
+.item-close,
+.item-remove {
   display: grid;
   width: 26px;
   height: 22px;
@@ -602,7 +615,8 @@ svg {
   letter-spacing: -1px;
 }
 
-.item-close svg {
+.item-close svg,
+.item-remove svg {
   width: 13px;
   height: 13px;
   fill: none;
@@ -613,7 +627,9 @@ svg {
 .item-action:hover,
 .item-action:focus-visible,
 .item-close:hover,
-.item-close:focus-visible {
+.item-close:focus-visible,
+.item-remove:hover,
+.item-remove:focus-visible {
   color: #3158b1;
   background: #edf2fb;
   outline: none;

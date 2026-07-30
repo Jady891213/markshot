@@ -603,7 +603,7 @@ function createDocumentItem(record, { recent = false } = {}) {
   item.className = "document-item";
   item.draggable = Boolean(record.path);
   if (!recent && record.id === activeDocumentId) item.classList.add("active");
-  if (!recent && record.status === "missing") item.classList.add("missing");
+  if (record.status === "missing") item.classList.add("missing");
 
   const icon = document.createElement("span");
   icon.className = "document-icon";
@@ -624,7 +624,9 @@ function createDocumentItem(record, { recent = false } = {}) {
     : record.name;
   const detail = document.createElement("small");
   detail.textContent = recent
-    ? record.path
+    ? record.status === "missing"
+      ? `${t("status.missingRecent")} · ${record.path}`
+      : record.path
     : documentSubtitle(record);
   copy.append(name, detail);
 
@@ -645,8 +647,25 @@ function createDocumentItem(record, { recent = false } = {}) {
 
   const actions = document.createElement("span");
   actions.className = "document-actions";
-  if (!recent) {
-    item.classList.add("has-close");
+  item.classList.add("has-quick-action");
+  if (recent) {
+    const remove = document.createElement("button");
+    remove.type = "button";
+    remove.className = "item-remove";
+    remove.title = t("action.removeRecent");
+    remove.setAttribute("aria-label", t("action.removeRecent"));
+    remove.innerHTML = `
+      <svg aria-hidden="true" viewBox="0 0 20 20">
+        <path d="m6 6 8 8M14 6l-8 8"></path>
+      </svg>
+    `;
+    remove.addEventListener("click", async (event) => {
+      event.preventDefault();
+      event.stopPropagation();
+      await removeRecentDocument(record);
+    });
+    actions.append(remove);
+  } else {
     const close = document.createElement("button");
     close.type = "button";
     close.className = "item-close";
@@ -722,6 +741,14 @@ async function closeOpenedDocument(record) {
     } else {
       showEmptyReadingState();
     }
+  } catch (error) {
+    showToast(t("toast.actionFailed", { message: error.message }), "error");
+  }
+}
+
+async function removeRecentDocument(record) {
+  try {
+    applyLibrary(await api.removeRecent(record.path));
   } catch (error) {
     showToast(t("toast.actionFailed", { message: error.message }), "error");
   }
