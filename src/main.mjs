@@ -785,18 +785,30 @@ function showHud(message, tone = "success", duration = 1500) {
   if (hudWindow && !hudWindow.isDestroyed()) hudWindow.destroy();
 
   const display = screen.getDisplayNearestPoint(screen.getCursorScreenPoint());
-  const width = settings.language === "en" ? 460 : 390;
-  const height = settings.language === "en" ? 74 : 66;
+  const width = settings.language === "en" ? 490 : 420;
+  const height = 58;
   const x = Math.round(
     display.workArea.x + (display.workArea.width - width) / 2,
   );
   const y = display.workArea.y + 20;
-  const toneColor =
+  const toneStyle =
     tone === "error"
-      ? "rgba(181, 43, 43, 0.96)"
+      ? {
+          color: "#ff6961",
+          background: "rgba(255, 69, 58, 0.18)",
+          glyph: "!",
+        }
       : tone === "info"
-        ? "rgba(40, 52, 68, 0.96)"
-        : "rgba(28, 42, 57, 0.96)";
+        ? {
+            color: "#64a8ff",
+            background: "rgba(10, 132, 255, 0.2)",
+            glyph: "…",
+          }
+        : {
+            color: "#4ee06f",
+            background: "rgba(48, 209, 88, 0.18)",
+            glyph: "✓",
+          };
 
   hudWindow = new BrowserWindow({
     x,
@@ -805,11 +817,16 @@ function showHud(message, tone = "success", duration = 1500) {
     height,
     show: false,
     frame: false,
-    transparent: true,
+    type: "panel",
+    transparent: false,
+    backgroundColor: "#00000000",
+    vibrancy: "hud",
+    visualEffectState: "active",
     focusable: false,
     alwaysOnTop: true,
     skipTaskbar: true,
     hasShadow: true,
+    roundedCorners: true,
     resizable: false,
     webPreferences: {
       contextIsolation: true,
@@ -817,6 +834,7 @@ function showHud(message, tone = "success", duration = 1500) {
       sandbox: true,
     },
   });
+  hudWindow.setIgnoreMouseEvents(true);
   hudWindow.setVisibleOnAllWorkspaces(true, {
     visibleOnFullScreen: true,
   });
@@ -828,27 +846,68 @@ function showHud(message, tone = "success", duration = 1500) {
           <meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'unsafe-inline';">
           <style>
             * { box-sizing: border-box; }
-            html, body { margin: 0; width: 100%; height: 100%; background: transparent; }
+            html, body {
+              margin: 0;
+              width: 100%;
+              height: 100%;
+              overflow: hidden;
+              background: transparent;
+            }
             body {
-              display: grid;
-              place-items: center;
-              padding: 8px;
-              color: white;
-              font: 14px -apple-system, BlinkMacSystemFont, "PingFang SC", sans-serif;
+              color: rgba(255, 255, 255, 0.96);
+              font: 13px -apple-system, BlinkMacSystemFont, "PingFang SC", sans-serif;
+              user-select: none;
             }
             .hud {
               width: 100%;
-              padding: 14px 18px;
-              text-align: center;
-              background: ${toneColor};
-              border: 1px solid rgba(255,255,255,.16);
-              border-radius: 14px;
-              box-shadow: 0 12px 34px rgba(0,0,0,.25);
-              backdrop-filter: blur(18px);
+              height: 100%;
+              display: flex;
+              align-items: center;
+              justify-content: center;
+              gap: 10px;
+              padding: 0 18px;
+              background: rgba(18, 22, 30, 0.34);
+              border: 1px solid rgba(255, 255, 255, 0.2);
+              border-radius: 12px;
+              animation: hud-in 140ms cubic-bezier(.2, .8, .2, 1);
+            }
+            .status {
+              width: 21px;
+              height: 21px;
+              flex: 0 0 21px;
+              display: grid;
+              place-items: center;
+              color: ${toneStyle.color};
+              background: ${toneStyle.background};
+              border: 1px solid color-mix(in srgb, ${toneStyle.color} 48%, transparent);
+              border-radius: 50%;
+              font-size: 13px;
+              font-weight: 700;
+              line-height: 1;
+            }
+            .message {
+              overflow: hidden;
+              text-overflow: ellipsis;
+              white-space: nowrap;
+            }
+            @keyframes hud-in {
+              from {
+                opacity: 0;
+                transform: translateY(-4px) scale(.985);
+              }
+              to {
+                opacity: 1;
+                transform: translateY(0) scale(1);
+              }
             }
           </style>
         </head>
-        <body><div class="hud">${escapeHtml(message)}</div></body>
+        <body>
+          <div class="hud" role="status">
+            <span class="status" aria-hidden="true">${toneStyle.glyph}</span>
+            <span class="message">${escapeHtml(message)}</span>
+          </div>
+        </body>
       </html>`),
   );
   hudWindow.once("ready-to-show", () => {

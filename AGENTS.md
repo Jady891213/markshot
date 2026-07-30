@@ -22,6 +22,7 @@
 - Keep both halves of the copy/export split action exactly 32 px high with one continuous primary background and no visible internal divider.
 - Use the macOS tray title `MS` with the system monospaced font and an empty image. This is intentionally text-only so the status item follows macOS light/dark menu-bar contrast and cannot collapse into an unreadable template-image blob.
 - Single-clicking the menu-bar status icon opens its context menu. Double-clicking it opens the management window directly and cancels the pending single-click menu.
+- Render quick-generation feedback as one non-activating macOS `hud` vibrancy panel with native rounded corners and shadow. Do not combine a transparent padded BrowserWindow with a second CSS shadow or backdrop layer.
 - Reopening MarkShot from its `.app` icon activates and shows the management window.
 - Keep the workspace unified around two sidebar modes: `即时` for editable pasted content and `阅读` for read-only local Markdown documents. Do not add horizontal document tabs.
 - Only the fixed immediate textarea is editable. Preview, Split, Source, and every local document view are read-only.
