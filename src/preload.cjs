@@ -26,6 +26,8 @@ contextBridge.exposeInMainWorld("replyImage", {
       "documents:open-paths",
       Array.from(files || [], (file) => webUtils.getPathForFile(file)),
     ),
+  startFileDrag: (filePath) =>
+    ipcRenderer.send("documents:start-drag", filePath),
   saveInstantDocument: (request) =>
     ipcRenderer.invoke("documents:save-instant", request),
   showItemInFolder: (filePath) =>

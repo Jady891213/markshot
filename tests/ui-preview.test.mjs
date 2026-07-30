@@ -95,6 +95,42 @@ test("reading items use one Finder menu for more and context-click actions", () 
   assert.match(styles, /\.document-item-menu\s*\{/);
 });
 
+test("Markdown files drop in with an affordance and document cards drag out natively", () => {
+  assert.match(html, /id="drop-overlay"[\s\S]*?class="drop-zone"/);
+  assert.match(html, /class="drop-icon"[\s\S]*?>MD<\/span>/);
+  assert.match(script, /item\.draggable = Boolean\(record\.path\)/);
+  assert.match(script, /item\.addEventListener\("dragstart"/);
+  assert.match(script, /api\.startFileDrag\(record\.path\)/);
+  assert.match(
+    script,
+    /Array\.from\(event\.dataTransfer\?\.types \|\| \[\]\)\.includes\("Files"\)/,
+  );
+  assert.match(styles, /\.drop-zone\s*\{[\s\S]*?border: 2px dashed #5d83e5;/);
+});
+
+test("settings use a compact Quick Capture row without subtitle or apply help", () => {
+  assert.doesNotMatch(html, /data-i18n="settings\.subtitle"/);
+  assert.doesNotMatch(html, /id="apply-shortcut"/);
+  assert.doesNotMatch(html, /id="shortcut-help"/);
+  assert.match(html, /class="shortcut-setting-row"/);
+  assert.match(html, /id="edit-shortcut"/);
+  assert.match(html, /id="disable-shortcut"/);
+  assert.match(
+    styles,
+    /\.dialog-header\s*\{[\s\S]*?border-bottom: 0;/,
+  );
+  assert.match(
+    script,
+    /elements\.accelerator\.addEventListener\("keyup"[\s\S]*?scheduleShortcutApply/,
+  );
+  assert.match(script, /updateShortcutLabel\(\);\s*scheduleShortcutApply\(420\)/);
+  assert.match(script, /async function applyShortcut\(\)/);
+  assert.match(
+    script,
+    /elements\.shortcutEnabled\.checked = false;[\s\S]*?api\.updateSettings\(currentSettings\(\)\)/,
+  );
+});
+
 test("Command+F searches the current preview without changing exported HTML", () => {
   assert.match(html, /id="preview-search-input"/);
   assert.match(html, /id="preview-search-previous"/);

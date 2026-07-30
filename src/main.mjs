@@ -1,4 +1,5 @@
 import fs from "node:fs/promises";
+import { statSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import {
@@ -1337,6 +1338,23 @@ function registerIpc() {
     }
     shell.showItemInFolder(target);
     return { ok: true };
+  });
+  ipcMain.on("documents:start-drag", (event, filePath) => {
+    const target = path.resolve(String(filePath || ""));
+    const snapshot = documentLibrarySnapshot();
+    const known = [...snapshot.opened, ...snapshot.recent].some(
+      (record) => record.path === target,
+    );
+    if (!known || !isMarkdownPath(target)) return;
+    try {
+      if (!statSync(target).isFile()) return;
+    } catch {
+      return;
+    }
+    const icon = nativeImage
+      .createFromPath(path.join(SOURCE_DIR, "..", "assets", "app-icon.png"))
+      .resize({ width: 32, height: 32 });
+    event.sender.startDrag({ file: target, icon });
   });
   ipcMain.handle("documents:update-instant", (_event, next) => {
     instantDocument = {

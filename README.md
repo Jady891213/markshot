@@ -4,7 +4,7 @@ MarkShot 是一款常驻 macOS 的 Markdown 阅读与分享工具。
 
 MarkShot 把 Markdown 阅读和图片分享放在同一个工作台中：既可以粘贴一段内容即时预览、复制为长图，也可以打开本地 Markdown 文件进行只读阅读。预览是可选择文字的真实文档，只有复制或导出时才会生成图片。
 
-当前开发版本：`v0.4.0`，仅提供 macOS Apple Silicon 构建。
+当前开发版本：`v0.5.0`，仅提供 macOS Apple Silicon 构建。
 
 ## 界面原型
 
@@ -14,8 +14,8 @@ MarkShot 把 Markdown 阅读和图片分享放在同一个工作台中：既可�
 
 - Markdown、纯文本和富文本预览
 - 标题、列表、任务列表、表格、引用、代码高亮、脚注和安全 HTML
-- 本地 Markdown 多文件打开、拖放打开、`Command+O` 与 Finder“打开方式”
-- 已打开文档、最近打开记录和外部修改实时刷新
+- 本地 Markdown 多文件打开、带视觉提示的窗口拖放打开、`Command+O` 与 Finder“打开方式”
+- 已打开文档、最近打开记录和外部修改实时刷新；侧栏文档可原生拖到聊天等外部应用
 - “即时 / 阅读”独立状态，以及预览、双栏、源码三种只读视图
 - 可选择文字的真实 DOM 预览，与最终图片共用渲染 HTML 和主题 CSS
 - 移动端使用可滚动的手机外框预览，PC 使用桌面文档画布；设备外框不会进入最终图片
@@ -27,7 +27,7 @@ MarkShot 把 Markdown 阅读和图片分享放在同一个工作台中：既可�
 - 图片复制与手动导出；超长内容会自动排成顶部对齐的 2–4 列，并合成为一张 PNG
 - Mermaid、Markmap、Graphviz/DOT、Vega-Lite 与 ECharts 文本绘图
 - 长图捕获失败自动重试，超过四列时明确提示并保留原剪贴板
-- 全局快捷键快速读取剪贴板并生成图片
+- “快速截图”快捷键快速读取剪贴板并生成图片
 - Dock 与菜单栏常驻
 - UTF-8、UTF-16LE 和 UTF-16BE 文本识别
 
@@ -63,7 +63,7 @@ codesign --verify --deep --strict --verbose=2 "out/MarkShot-darwin-arm64/MarkSho
 
 ## 发布
 
-源码由 `main` 分支维护。编译后的 `.app`、ZIP 和 DMG 不提交到 Git 仓库；当前公开版本为 `v0.4.0`，在对应的 GitHub Release 中提供：
+源码由 `main` 分支维护。编译后的 `.app`、ZIP 和 DMG 不提交到 Git 仓库；当前公开版本仍为 `v0.4.0`，本次 `v0.5.0` 先在开发分支验证：
 
 - `MarkShot-v0.4.0-macOS-arm64.zip`：解压后直接获得 MarkShot.app
 - `MarkShot-v0.4.0-macOS-arm64.dmg`：标准 macOS 磁盘映像

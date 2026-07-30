@@ -55,7 +55,8 @@ const elements = {
   settingsModal: document.getElementById("settings-modal"),
   shortcutEnabled: document.getElementById("shortcut-enabled"),
   accelerator: document.getElementById("accelerator"),
-  applyShortcut: document.getElementById("apply-shortcut"),
+  editShortcut: document.getElementById("edit-shortcut"),
+  disableShortcut: document.getElementById("disable-shortcut"),
   shortcutError: document.getElementById("shortcut-error"),
   shortcutSummary: document.getElementById("shortcut-summary"),
   dropOverlay: document.getElementById("drop-overlay"),
@@ -75,6 +76,8 @@ let lastReadingDocumentId = "";
 let currentView = "preview";
 let currentPreview;
 let shortcutDraft = "";
+let shortcutPending = false;
+let shortcutApplyTimer;
 let renderTimer;
 let settingsTimer;
 let instantTimer;
@@ -82,6 +85,7 @@ let resizeTimer;
 let toastTimer;
 let renderSequence = 0;
 let dragDepth = 0;
+let outboundDocumentDrag = false;
 let outlineTargets = [];
 let previewSearchMatches = [];
 let previewSearchIndex = -1;
@@ -403,10 +407,20 @@ function currentSettings() {
 }
 
 function updateShortcutLabel() {
-  const shortcut = elements.accelerator.value || t("settings.shortcutUnset");
-  elements.shortcutSummary.textContent = elements.shortcutEnabled.checked
-    ? shortcut.replaceAll("+", " + ")
+  const enabled = elements.shortcutEnabled.checked;
+  const shortcut =
+    shortcutDraft || settings.accelerator || t("settings.shortcutUnset");
+  const formattedShortcut = shortcut.replaceAll("+", " + ");
+  elements.shortcutSummary.textContent = enabled
+    ? formattedShortcut
     : t("settings.shortcutOff");
+  if (!elements.accelerator.classList.contains("is-recording")) {
+    elements.accelerator.value = enabled
+      ? formattedShortcut
+      : t("settings.shortcutOff");
+  }
+  elements.accelerator.classList.toggle("is-off", !enabled);
+  elements.disableShortcut.hidden = !enabled;
 }
 
 function applyTranslations() {
@@ -587,6 +601,7 @@ function createDocumentItem(record, { recent = false } = {}) {
   item.tabIndex = 0;
   item.setAttribute("role", "button");
   item.className = "document-item";
+  item.draggable = Boolean(record.path);
   if (!recent && record.id === activeDocumentId) item.classList.add("active");
   if (!recent && record.status === "missing") item.classList.add("missing");
 
@@ -641,6 +656,21 @@ function createDocumentItem(record, { recent = false } = {}) {
       x: event.clientX,
       y: event.clientY,
     });
+  });
+  item.addEventListener("dragstart", (event) => {
+    if (!record.path) return;
+    event.preventDefault();
+    event.stopPropagation();
+    outboundDocumentDrag = true;
+    dragDepth = 0;
+    elements.dropOverlay.hidden = true;
+    closeDocumentItemMenu();
+    item.classList.add("is-dragging");
+    api.startFileDrag(record.path);
+  });
+  item.addEventListener("dragend", () => {
+    outboundDocumentDrag = false;
+    item.classList.remove("is-dragging");
   });
   return item;
 }
@@ -1367,7 +1397,8 @@ function acceleratorFromEvent(event) {
 
 async function applyShortcut() {
   elements.shortcutError.textContent = "";
-  elements.applyShortcut.disabled = true;
+  elements.editShortcut.disabled = true;
+  elements.disableShortcut.disabled = true;
   try {
     const result = await api.registerShortcut(shortcutDraft);
     if (!result.ok) {
@@ -1384,8 +1415,19 @@ async function applyShortcut() {
       message: error.message,
     });
   } finally {
-    elements.applyShortcut.disabled = false;
+    elements.editShortcut.disabled = false;
+    elements.disableShortcut.disabled = false;
   }
+}
+
+function scheduleShortcutApply(delay = 160) {
+  clearTimeout(shortcutApplyTimer);
+  shortcutApplyTimer = setTimeout(async () => {
+    if (!shortcutPending) return;
+    shortcutPending = false;
+    await applyShortcut();
+    elements.accelerator.blur();
+  }, delay);
 }
 
 document.querySelectorAll("[data-mode]").forEach((button) => {
@@ -1530,23 +1572,24 @@ elements.closeSettings.addEventListener("click", closeSettingsDialog);
 elements.settingsModal.addEventListener("click", (event) => {
   if (event.target === elements.settingsModal) closeSettingsDialog();
 });
-elements.shortcutEnabled.addEventListener("change", async () => {
-  elements.shortcutError.textContent = "";
-  const result = await api.updateSettings(currentSettings());
-  if (!result.ok) {
-    elements.shortcutError.textContent = t(
-      "settings.shortcutConflictEnable",
-    );
-  }
-  applySettingsToControls(result.settings);
+elements.editShortcut.addEventListener("click", () => {
+  elements.accelerator.focus();
 });
 elements.accelerator.addEventListener("focus", () => {
+  clearTimeout(shortcutApplyTimer);
+  shortcutPending = false;
   elements.accelerator.classList.add("is-recording");
   elements.accelerator.value = t("settings.shortcutRecord");
+  elements.accelerator.select();
 });
 elements.accelerator.addEventListener("blur", () => {
+  clearTimeout(shortcutApplyTimer);
+  if (shortcutPending) {
+    shortcutPending = false;
+    shortcutDraft = settings.accelerator;
+  }
   elements.accelerator.classList.remove("is-recording");
-  elements.accelerator.value = shortcutDraft;
+  updateShortcutLabel();
 });
 elements.accelerator.addEventListener("keydown", (event) => {
   event.preventDefault();
@@ -1557,11 +1600,39 @@ elements.accelerator.addEventListener("keydown", (event) => {
     return;
   }
   shortcutDraft = next;
-  elements.accelerator.value = next;
+  shortcutPending = true;
+  elements.shortcutEnabled.checked = true;
   elements.shortcutError.textContent = "";
   updateShortcutLabel();
+  scheduleShortcutApply(420);
 });
-elements.applyShortcut.addEventListener("click", applyShortcut);
+elements.accelerator.addEventListener("keyup", (event) => {
+  event.preventDefault();
+  event.stopPropagation();
+  if (!shortcutPending) return;
+  scheduleShortcutApply(
+    event.metaKey || event.ctrlKey || event.altKey || event.shiftKey
+      ? 180
+      : 30,
+  );
+});
+elements.disableShortcut.addEventListener("click", async () => {
+  elements.shortcutError.textContent = "";
+  elements.disableShortcut.disabled = true;
+  try {
+    elements.shortcutEnabled.checked = false;
+    const result = await api.updateSettings(currentSettings());
+    applySettingsToControls(result.settings);
+  } catch (error) {
+    elements.shortcutError.textContent = t("error.settingsFailed", {
+      message: error.message,
+    });
+    elements.shortcutEnabled.checked = settings.shortcutEnabled;
+    updateShortcutLabel();
+  } finally {
+    elements.disableShortcut.disabled = false;
+  }
+});
 
 elements.contentScroll.addEventListener("scroll", () => {
   if (activeScrollContainer() !== elements.contentScroll) return;
@@ -1570,21 +1641,32 @@ elements.contentScroll.addEventListener("scroll", () => {
   updateActiveOutline();
 });
 
+function isExternalFileDrag(event) {
+  return (
+    !outboundDocumentDrag &&
+    Array.from(event.dataTransfer?.types || []).includes("Files")
+  );
+}
+
 window.addEventListener("dragenter", (event) => {
+  if (!isExternalFileDrag(event)) return;
   event.preventDefault();
   dragDepth += 1;
   elements.dropOverlay.hidden = false;
 });
 window.addEventListener("dragover", (event) => {
+  if (!isExternalFileDrag(event)) return;
   event.preventDefault();
   event.dataTransfer.dropEffect = "copy";
 });
 window.addEventListener("dragleave", (event) => {
+  if (!isExternalFileDrag(event)) return;
   event.preventDefault();
   dragDepth = Math.max(0, dragDepth - 1);
   if (!dragDepth) elements.dropOverlay.hidden = true;
 });
 window.addEventListener("drop", (event) => {
+  if (!isExternalFileDrag(event)) return;
   event.preventDefault();
   dragDepth = 0;
   elements.dropOverlay.hidden = true;

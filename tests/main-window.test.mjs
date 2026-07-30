@@ -6,6 +6,10 @@ const source = await fs.readFile(
   new URL("../src/main.mjs", import.meta.url),
   "utf8",
 );
+const preload = await fs.readFile(
+  new URL("../src/preload.cjs", import.meta.url),
+  "utf8",
+);
 
 test("closing hides the Dock entry while minimizing stays native", () => {
   assert.match(
@@ -61,4 +65,21 @@ test("show in Finder only accepts known document paths", () => {
     /const snapshot = documentLibrarySnapshot\(\);[\s\S]*?record\.path === target[\s\S]*?error\.unknownDocumentPath/,
   );
   assert.match(source, /shell\.showItemInFolder\(target\)/);
+});
+
+test("document cards start a native file drag for known Markdown paths", () => {
+  assert.match(
+    preload,
+    /startFileDrag: \(filePath\) =>\s*ipcRenderer\.send\("documents:start-drag", filePath\)/,
+  );
+  assert.match(source, /ipcMain\.on\("documents:start-drag"/);
+  assert.match(
+    source,
+    /record\.path === target[\s\S]*?!known \|\| !isMarkdownPath\(target\)/,
+  );
+  assert.match(source, /statSync\(target\)\.isFile\(\)/);
+  assert.match(
+    source,
+    /event\.sender\.startDrag\(\{ file: target, icon \}\)/,
+  );
 });

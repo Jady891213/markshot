@@ -28,6 +28,8 @@
 - Only the fixed immediate textarea is editable. Preview, Split, Source, and every local document view are read-only.
 - Preserve separate mode and per-document view state, scroll position, and active heading. Opening a local file switches to `阅读`; switching back restores the previous immediate or reading position.
 - The reading sidebar contains explicit Open Markdown, Opened, and Recent sections. Support multi-file selection, drag-and-drop, Command+O, second-instance file arguments, and macOS Open With.
+- Show a clear full-window affordance only while external Markdown files are hovering over the app. Open valid dropped files on release, and keep internal sidebar drag-out from triggering that affordance.
+- Make every available Opened and Recent document card a native file drag source. Dragging a card into Finder, chat, mail, or another macOS app must transfer the original Markdown file, never plain text or a MarkShot-only payload.
 - Watch opened local files with Node `fs.watch` and debounce refreshes. If a file disappears, keep its last content and mark it unavailable.
 - Persist at most 20 deduplicated recent paths and timestamps. Do not persist document bodies, immediate content, rendered HTML, previews, or image history.
 - Keep the document body and right outline/style panel in one scroll container with the scrollbar at the far right. Style replaces Outline in the same position.
@@ -45,6 +47,7 @@
 - Use the selected B wordmark as a lightweight replacement for the top-left App icon plus plain `MarkShot` text, and reuse the same wordmark in the optional image footer. Do not change the app icon, title-bar height, workspace structure, or add a brand subtitle.
 - The background choices are None, Plain, and Soft. None removes canvas padding plus card background decoration so the output is only the themed Markdown content surface.
 - Show the current global shortcut in the app title bar immediately left of a settings icon. Configure it in an in-app modal opened by that icon; do not expose a separate Hide Window button.
+- Label the global shortcut setting `快速截图 / Quick Capture`. Keep it as a compact left/right settings row: current shortcut or Off on the right, an edit action, and a disable action only while enabled. Do not add a settings subtitle, header divider, apply button, or redundant shortcut instructions.
 - Keep `contextIsolation: true`, `nodeIntegration: false`, and expose only the narrow preload API.
 - Keep all MarkShot-owned user-facing copy in the shared `src/i18n.mjs` layer. Supported interface languages are `zh-CN` and `en`, with Simplified Chinese as the default and fallback for legacy or invalid settings.
 - Language changes must apply immediately without reloading the renderer or resetting the active document, view, scroll position, or heading. Rebuild Tray, Dock, and application menus after a language change, and include language in render revisions so preview HTML, footer dates, and `lang` attributes cannot reuse stale output.
@@ -86,7 +89,7 @@ After validation, replace the sibling `MarkShot.app` and remove the Forge `out/`
 
 - Test Chinese UTF-8, UTF-16LE, and UTF-16BE payloads, including BOM-less samples.
 - Test headings, nested lists, tasks, tables, blockquotes, footnotes, code highlighting, links, images, and unsafe HTML removal.
-- Test file selection, Command+O, multi-file drag-and-drop, Open With, repeated-path deduplication, recent ordering, file refresh, and missing-file recovery.
+- Test file selection, Command+O, multi-file drag-and-drop, native sidebar file drag-out, Open With, repeated-path deduplication, recent ordering, file refresh, and missing-file recovery.
 - Verify Immediate and Reading restore their own active document, view, scroll position, and heading; Preview, Split, and Source must remain read-only.
 - Verify Command+F from both the app chrome and focused preview iframe, including Chinese/English queries, no-result state, Enter/Shift+Enter navigation, long single-column previews, and Escape cleanup.
 - Verify mobile 1080 px and desktop 1600 px; desktop preview stays at 800 px and does not grow with the window, while legacy or custom profile inputs normalize to mobile.
