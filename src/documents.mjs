@@ -140,9 +140,13 @@ export class DocumentLibrary {
   }
 
   snapshot() {
+    const opened = [...this.documents.values()].map(publicDocument);
+    const openedPaths = new Set(opened.map((document) => document.path));
     return {
-      opened: [...this.documents.values()].map(publicDocument),
-      recent: this.recentFiles.map((item) => ({ ...item })),
+      opened,
+      recent: this.recentFiles
+        .filter((item) => !openedPaths.has(item.path))
+        .map((item) => ({ ...item })),
     };
   }
 
@@ -283,9 +287,11 @@ export class DocumentLibrary {
     }
   }
 
-  closeDocument(documentIdValue) {
+  async closeDocument(documentIdValue) {
+    const record = this.documents.get(documentIdValue);
     const existed = this.documents.delete(documentIdValue);
     this.stopWatcher(documentIdValue);
+    if (record) await this.touchRecent(record.path);
     return existed;
   }
 

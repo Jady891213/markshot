@@ -66,6 +66,7 @@ test("document library opens, watches and marks local Markdown missing", async (
     const duplicate = await library.openPaths([markdownPath]);
     assert.equal(duplicate.documents[0].id, first.documents[0].id);
     assert.equal(library.snapshot().opened.length, 1);
+    assert.equal(library.snapshot().recent.length, 0);
 
     await fs.writeFile(markdownPath, "# 第二版\n\n外部更新", "utf8");
     await library.refreshDocument(first.documents[0].id);
@@ -85,6 +86,70 @@ test("document library opens, watches and marks local Markdown missing", async (
     assert.equal(
       library.snapshot().opened[0].source,
       "# 第二版\n\n外部更新",
+    );
+
+    await library.closeDocument(first.documents[0].id);
+    assert.equal(library.snapshot().opened.length, 0);
+    assert.equal(library.snapshot().recent.length, 1);
+    assert.equal(library.snapshot().recent[0].path, resolvedMarkdownPath);
+  } finally {
+    library.dispose();
+    await fs.rm(directory, { recursive: true, force: true });
+  }
+});
+
+test("opened and recent stacks are exclusive and closing moves a file to recent first", async () => {
+  const directory = await fs.mkdtemp(
+    path.join(os.tmpdir(), "MarkShot Stack TMP to delete."),
+  );
+  const firstPath = path.join(directory, "第一篇.md");
+  const secondPath = path.join(directory, "第二篇.md");
+  const recentPath = path.join(directory, "recent-documents.json");
+  const library = new DocumentLibrary({ recentPath });
+
+  try {
+    await Promise.all([
+      fs.writeFile(firstPath, "# 第一篇", "utf8"),
+      fs.writeFile(secondPath, "# 第二篇", "utf8"),
+    ]);
+    await library.initialize();
+    const first = (await library.openPaths([firstPath])).documents[0];
+    const second = (await library.openPaths([secondPath])).documents[0];
+
+    let snapshot = library.snapshot();
+    assert.deepEqual(
+      snapshot.opened.map((document) => document.name),
+      ["第一篇.md", "第二篇.md"],
+    );
+    assert.deepEqual(snapshot.recent, []);
+
+    await library.closeDocument(first.id);
+    snapshot = library.snapshot();
+    assert.deepEqual(
+      snapshot.opened.map((document) => document.name),
+      ["第二篇.md"],
+    );
+    assert.deepEqual(
+      snapshot.recent.map((entry) => path.basename(entry.path)),
+      ["第一篇.md"],
+    );
+
+    await library.closeDocument(second.id);
+    snapshot = library.snapshot();
+    assert.deepEqual(
+      snapshot.recent.map((entry) => path.basename(entry.path)),
+      ["第二篇.md", "第一篇.md"],
+    );
+
+    await library.openPaths([firstPath]);
+    snapshot = library.snapshot();
+    assert.deepEqual(
+      snapshot.opened.map((document) => document.name),
+      ["第一篇.md"],
+    );
+    assert.deepEqual(
+      snapshot.recent.map((entry) => path.basename(entry.path)),
+      ["第二篇.md"],
     );
   } finally {
     library.dispose();

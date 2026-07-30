@@ -165,22 +165,24 @@
           </section>
 
           <section class="sidebar-panel reading-panel" data-sidebar-panel="reading">
-            <section class="sidebar-section">
-              <div class="section-heading">
-                <b data-i18n="reading.opened">已打开</b>
-                <button class="open-document" id="open-document" type="button">
-                  <span data-i18n="reading.openMarkdown">＋ 打开 Markdown</span>
-                </button>
-              </div>
-              <div class="document-list" id="opened-documents"></div>
-            </section>
-            <section class="sidebar-section recent-section">
-              <div class="section-heading">
-                <b data-i18n="reading.recent">最近打开</b>
-                <span id="recent-count">0</span>
-              </div>
-              <div class="document-list" id="recent-documents"></div>
-            </section>
+            <div class="document-stack">
+              <section class="sidebar-section open-section">
+                <div class="section-heading">
+                  <b data-i18n="reading.opened">打开</b>
+                  <button class="open-document" id="open-document" type="button">
+                    <span data-i18n="reading.openMarkdown">＋ 打开 Markdown</span>
+                  </button>
+                </div>
+                <div class="document-list" id="opened-documents"></div>
+              </section>
+              <section class="sidebar-section recent-section">
+                <div class="section-heading">
+                  <b data-i18n="reading.recent">最近</b>
+                  <span id="recent-count">0</span>
+                </div>
+                <div class="document-list" id="recent-documents"></div>
+              </section>
+            </div>
           </section>
         </aside>
 

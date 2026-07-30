@@ -444,19 +444,26 @@ svg {
 .reading-panel.active {
   display: flex;
   flex-direction: column;
+  overflow: hidden;
+}
+
+.document-stack {
+  flex: 1;
   overflow: auto;
+  padding: 6px 0 12px;
 }
 
 .sidebar-section {
-  padding: 12px 10px;
+  padding: 6px 10px;
 }
 
 .sidebar-section + .sidebar-section {
-  border-top: 1px solid var(--line-soft);
+  margin-top: 8px;
+  border-top: 0;
 }
 
 .recent-section {
-  flex: 1;
+  min-height: 0;
 }
 
 .section-heading {
@@ -498,6 +505,10 @@ svg {
   cursor: grab;
 }
 
+.document-item.has-close {
+  padding-right: 58px;
+}
+
 .document-item:hover {
   background: #f5f7fa;
 }
@@ -522,11 +533,18 @@ svg {
   flex: 0 0 auto;
   width: 27px;
   height: 27px;
-  color: #5e6d82;
-  background: #edf1f6;
-  border-radius: 7px;
-  font: 9px/1 "SFMono-Regular", Consolas, monospace;
-  font-weight: 700;
+  color: #667b9a;
+  background: transparent;
+}
+
+.document-icon svg {
+  width: 21px;
+  height: 21px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.55;
+  stroke-linecap: round;
+  stroke-linejoin: round;
 }
 
 .document-copy {
@@ -553,31 +571,57 @@ svg {
 
 .document-item.missing .document-icon {
   color: var(--danger);
-  background: #fff0f0;
 }
 
-.item-action {
+.document-actions {
   position: absolute;
   top: 50%;
   right: 6px;
   display: none;
+  align-items: center;
+  gap: 2px;
+  transform: translateY(-50%);
+}
+
+.item-action,
+.item-close {
+  display: grid;
   width: 26px;
   height: 22px;
   padding: 0;
-  transform: translateY(-50%);
+  place-items: center;
   color: #7c8797;
-  background: white;
+  background: rgba(255, 255, 255, 0.92);
   border: 1px solid #dfe5ec;
   border-radius: 6px;
   cursor: pointer;
+}
+
+.item-action {
   font-size: 10px;
   letter-spacing: -1px;
 }
 
-.document-item:hover .item-action,
-.document-item:focus-within .item-action {
-  display: grid;
-  place-items: center;
+.item-close svg {
+  width: 13px;
+  height: 13px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.7;
+}
+
+.item-action:hover,
+.item-action:focus-visible,
+.item-close:hover,
+.item-close:focus-visible {
+  color: #3158b1;
+  background: #edf2fb;
+  outline: none;
+}
+
+.document-item:hover .document-actions,
+.document-item:focus-within .document-actions {
+  display: flex;
 }
 
 .document-item-menu {

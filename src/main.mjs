@@ -1370,8 +1370,8 @@ function registerIpc() {
     };
     return { ...instantDocument };
   });
-  ipcMain.handle("documents:close", (_event, documentId) => {
-    documentLibrary?.closeDocument(documentId);
+  ipcMain.handle("documents:close", async (_event, documentId) => {
+    await documentLibrary?.closeDocument(documentId);
     return documentLibrarySnapshot();
   });
   ipcMain.handle("documents:remove-recent", async (_event, filePath) => {

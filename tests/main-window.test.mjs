@@ -83,3 +83,10 @@ test("document cards start a native file drag for known Markdown paths", () => {
     /event\.sender\.startDrag\(\{ file: target, icon \}\)/,
   );
 });
+
+test("closing a document waits for recent-stack persistence", () => {
+  assert.match(
+    source,
+    /ipcMain\.handle\("documents:close", async[\s\S]*?await documentLibrary\?\.closeDocument\(documentId\)/,
+  );
+});

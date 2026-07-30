@@ -27,7 +27,7 @@
 - Keep the workspace unified around two sidebar modes: `即时` for editable pasted content and `阅读` for read-only local Markdown documents. Do not add horizontal document tabs.
 - Only the fixed immediate textarea is editable. Preview, Split, Source, and every local document view are read-only.
 - Preserve separate mode and per-document view state, scroll position, and active heading. Opening a local file switches to `阅读`; switching back restores the previous immediate or reading position.
-- The reading sidebar contains explicit Open Markdown, Opened, and Recent sections. Support multi-file selection, drag-and-drop, Command+O, second-instance file arguments, and macOS Open With.
+- The reading sidebar contains explicit Open Markdown, Open, and Recent stacks. Open and Recent are mutually exclusive: opening a recent file appends it to Open, while closing an open file moves it to the front of Recent. Support multi-file selection, drag-and-drop, Command+O, second-instance file arguments, and macOS Open With.
 - Show a clear full-window affordance only while external Markdown files are hovering over the app. Open valid dropped files on release, and keep internal sidebar drag-out from triggering that affordance.
 - Make every available Opened and Recent document card a native file drag source. Dragging a card into Finder, chat, mail, or another macOS app must transfer the original Markdown file, never plain text or a MarkShot-only payload.
 - Watch opened local files with Node `fs.watch` and debounce refreshes. If a file disappears, keep its last content and mark it unavailable.
@@ -43,7 +43,7 @@
 - Keep the Immediate input and read-only Source views on the same monospace font size and line height.
 - Keep Clear and Paste at the left of the transparent immediate footer. Keep the secondary text action Save Document at its right; saving writes UTF-8 Markdown through a native dialog, opens it in Reading, and clears Immediate only after success.
 - Default saved Markdown filenames to the first level-one title after removing Markdown decorations. If no level-one title exists, use `markshot_YYYYMMDD_HHMMSS.md`.
-- In the Reading sidebar, show only the parent folder below available opened documents; do not display a Watching suffix. Both the three-dot action and context-click open the same document menu, currently containing only Show in Finder.
+- In the Reading sidebar, show only the parent folder below available open documents; do not display a Watching suffix. Use the linear Markdown file glyph on document cards. Open cards expose a quick close icon plus the three-dot menu; both the three-dot action and context-click open the same document menu, currently containing only Show in Finder.
 - Use the selected B wordmark as a lightweight replacement for the top-left App icon plus plain `MarkShot` text, and reuse the same wordmark in the optional image footer. Do not change the app icon, title-bar height, workspace structure, or add a brand subtitle.
 - The background choices are None, Plain, and Soft. None removes canvas padding plus card background decoration so the output is only the themed Markdown content surface.
 - Show the current global shortcut in the app title bar immediately left of a settings icon. Configure it in an in-app modal opened by that icon; do not expose a separate Hide Window button.

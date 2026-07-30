@@ -95,6 +95,21 @@ test("reading items use one Finder menu for more and context-click actions", () 
   assert.match(styles, /\.document-item-menu\s*\{/);
 });
 
+test("Open and Recent are exclusive stacks with close actions and Markdown icons", () => {
+  assert.match(html, /class="document-stack"/);
+  assert.match(html, /data-i18n="reading\.opened">打开<\/b>/);
+  assert.match(html, /data-i18n="reading\.recent">最近<\/b>/);
+  assert.match(script, /close\.className = "item-close"/);
+  assert.match(script, /await closeOpenedDocument\(record\)/);
+  assert.match(script, /const next = library\.opened\.at\(-1\)/);
+  assert.match(
+    script,
+    /<rect x="2\.75" y="5\.25" width="18\.5" height="13\.5"/,
+  );
+  assert.match(styles, /\.document-icon svg\s*\{/);
+  assert.match(styles, /\.document-actions\s*\{/);
+});
+
 test("Markdown files drop in with an affordance and document cards drag out natively", () => {
   assert.match(html, /id="drop-overlay"[\s\S]*?class="drop-zone"/);
   assert.match(html, /class="drop-icon"[\s\S]*?>MD<\/span>/);

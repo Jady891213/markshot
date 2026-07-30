@@ -607,7 +607,14 @@ function createDocumentItem(record, { recent = false } = {}) {
 
   const icon = document.createElement("span");
   icon.className = "document-icon";
-  icon.textContent = "MD";
+  icon.setAttribute("aria-hidden", "true");
+  icon.innerHTML = `
+    <svg viewBox="0 0 24 24">
+      <rect x="2.75" y="5.25" width="18.5" height="13.5" rx="2.25"></rect>
+      <path d="M6.25 15V9.5l2.75 3 2.75-3V15"></path>
+      <path d="M16.25 9.5V15m-2-2 2 2 2-2"></path>
+    </svg>
+  `;
 
   const copy = document.createElement("span");
   copy.className = "document-copy";
@@ -636,7 +643,30 @@ function createDocumentItem(record, { recent = false } = {}) {
     else showDocumentItemMenu(record, action);
   });
 
-  item.append(icon, copy, action);
+  const actions = document.createElement("span");
+  actions.className = "document-actions";
+  if (!recent) {
+    item.classList.add("has-close");
+    const close = document.createElement("button");
+    close.type = "button";
+    close.className = "item-close";
+    close.title = t("action.closeDocument");
+    close.setAttribute("aria-label", t("action.closeDocument"));
+    close.innerHTML = `
+      <svg aria-hidden="true" viewBox="0 0 20 20">
+        <path d="m6 6 8 8M14 6l-8 8"></path>
+      </svg>
+    `;
+    close.addEventListener("click", async (event) => {
+      event.preventDefault();
+      event.stopPropagation();
+      await closeOpenedDocument(record);
+    });
+    actions.append(close);
+  }
+  actions.append(action);
+
+  item.append(icon, copy, actions);
   item.addEventListener("click", async () => {
     if (recent) {
       await openRecent(record.path);
@@ -673,6 +703,28 @@ function createDocumentItem(record, { recent = false } = {}) {
     item.classList.remove("is-dragging");
   });
   return item;
+}
+
+async function closeOpenedDocument(record) {
+  const wasActive = record.id === activeDocumentId;
+  try {
+    const snapshot = await api.closeDocument(record.id);
+    documentViewState.delete(record.id);
+    if (wasActive) activeDocumentId = "";
+    applyLibrary(snapshot);
+    if (!wasActive) return;
+    const next = library.opened.at(-1);
+    if (next) {
+      activateDocument(next.id, {
+        mode: "reading",
+        preserveState: true,
+      });
+    } else {
+      showEmptyReadingState();
+    }
+  } catch (error) {
+    showToast(t("toast.actionFailed", { message: error.message }), "error");
+  }
 }
 
 function renderDocumentLists() {
@@ -730,6 +782,17 @@ function setSidebarPanel(mode) {
   });
 }
 
+function showEmptyReadingState() {
+  activeDocumentId = "";
+  currentPreview = undefined;
+  clearPreview();
+  elements.documentTitle.textContent = t("mode.reading");
+  elements.documentPath.textContent = t("reading.description");
+  elements.sourceContent.textContent = "";
+  elements.splitSource.textContent = "";
+  updateStatus();
+}
+
 function setMode(mode) {
   if (mode !== "instant" && mode !== "reading") return;
   saveCurrentState();
@@ -746,14 +809,7 @@ function setMode(mode) {
   if (nextId) {
     activateDocument(nextId, { mode, preserveState: true });
   } else {
-    activeDocumentId = "";
-    currentPreview = undefined;
-    clearPreview();
-    elements.documentTitle.textContent = t("mode.reading");
-    elements.documentPath.textContent = t("reading.description");
-    elements.sourceContent.textContent = "";
-    elements.splitSource.textContent = "";
-    updateStatus();
+    showEmptyReadingState();
   }
 }
 
