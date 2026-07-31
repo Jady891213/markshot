@@ -100,7 +100,7 @@ test("the two output profiles enforce their own layout", () => {
     background: "plain",
     showFooter: true,
     width: 1600,
-    fontSize: 32,
+    fontSize: 24,
     padding: 48,
   });
   assert.deepEqual(
@@ -164,6 +164,14 @@ test("document generation and page splitting remain deterministic", () => {
     /[01]\d\/[0-3]\d\/\d{4},? 24:00|[01]\d\/[0-3]\d\/\d{4},? \d{2}:\d{2}|[01]\d\/[0-3]\d\/\d{4},? \d:\d{2}/,
   );
   assert.notEqual(english.revision, result.revision);
+
+  const desktop = buildDocument({
+    source: "PC 正文",
+    sourceFormat: "markdown",
+    profile: "desktop",
+  });
+  assert.match(desktop.html, /--canvas-width: 1600px/);
+  assert.match(desktop.html, /--body-font-size: 24px/);
 
   const withoutFooter = buildDocument({
     source: "正文",
