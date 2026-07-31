@@ -40,8 +40,8 @@ export const OUTPUT_PROFILES = Object.freeze({
   mobile: Object.freeze({
     label: "移动端",
     width: 390,
-    fontSize: 16,
-    padding: 20,
+    fontSize: 14,
+    padding: 16,
   }),
   desktop: Object.freeze({
     label: "PC",

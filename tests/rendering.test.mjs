@@ -90,8 +90,8 @@ test("the two output profiles enforce their own layout", () => {
     background: "plain",
     showFooter: true,
     width: 390,
-    fontSize: 16,
-    padding: 20,
+    fontSize: 14,
+    padding: 16,
   });
   assert.deepEqual(normalizeRenderOptions({ profile: "desktop" }), {
     language: "zh-CN",
@@ -119,8 +119,8 @@ test("the two output profiles enforce their own layout", () => {
       background: "soft",
       showFooter: true,
       width: 390,
-      fontSize: 16,
-      padding: 20,
+      fontSize: 14,
+      padding: 16,
     },
   );
   assert.deepEqual(normalizeRenderOptions({ background: "none" }), {
@@ -130,8 +130,8 @@ test("the two output profiles enforce their own layout", () => {
     background: "none",
     showFooter: true,
     width: 390,
-    fontSize: 16,
-    padding: 20,
+    fontSize: 14,
+    padding: 16,
   });
 });
 

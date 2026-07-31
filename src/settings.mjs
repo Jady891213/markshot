@@ -10,8 +10,8 @@ export const DEFAULT_SETTINGS = Object.freeze({
   background: "plain",
   showFooter: true,
   width: 390,
-  fontSize: 16,
-  padding: 20,
+  fontSize: 14,
+  padding: 16,
   shortcutEnabled: true,
   accelerator: "Command+Option+T",
 });
