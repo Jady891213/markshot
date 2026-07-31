@@ -243,7 +243,7 @@ async function renderDiagramBlocks(blocks, options) {
   return html;
 }
 
-function createRenderWindow(width = 1080) {
+function createRenderWindow(width = 390) {
   if (renderWindow && !renderWindow.isDestroyed()) return renderWindow;
   renderCaptureScaleFactor = Math.max(
     1,

@@ -24,17 +24,22 @@ test("mobile preview adds device chrome without changing captured HTML", () => {
   assert.match(script, /scrollContainer\.className = "phone-screen"/);
   assert.match(styles, /\.phone-preview\s*\{/);
   assert.match(styles, /\.phone-screen\s*\{/);
+  assert.match(
+    styles,
+    /\.phone-screen\s*\{[^}]*overflow-x: hidden;[^}]*overflow-y: auto;/s,
+  );
 });
 
-test("desktop preview stays at a fixed 800 px reading width", () => {
+test("preview uses its real output width and only shrinks when space is insufficient", () => {
   assert.match(
     script,
-    /const maximumScale = record\.profile === "desktop" \? 0\.5 : 1;/,
+    /const scale = Math\.min\(\s*1,/,
   );
   assert.match(
     script,
     /availableWidth \/ \(record\.scaleWidth \|\| record\.width\)/,
   );
+  assert.doesNotMatch(script, /maximumScale/);
 });
 
 test("long output stays single-column in preview while copy composes columns", () => {

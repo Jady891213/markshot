@@ -529,7 +529,7 @@ function updateStatus() {
   elements.statusProfile.textContent = `${t(
     profile === "desktop" ? "profile.desktop" : "profile.mobile",
   )} · ${
-    profile === "desktop" ? "1600" : "1080"
+    profile === "desktop" ? "800" : "390"
   } px`;
   elements.statusPages.textContent = currentPreview?.pages?.length
     ? currentPreview.layout?.tooLong
@@ -1097,9 +1097,8 @@ function updateFrameScale(host) {
     record.scrollContainer?.clientWidth ||
       Math.min(record.host.clientWidth, elements.contentScroll.clientWidth),
   );
-  const maximumScale = record.profile === "desktop" ? 0.5 : 1;
   const scale = Math.min(
-    maximumScale,
+    1,
     availableWidth / (record.scaleWidth || record.width),
   );
   record.scale = scale;

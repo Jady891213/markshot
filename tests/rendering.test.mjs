@@ -89,9 +89,9 @@ test("the two output profiles enforce their own layout", () => {
     theme: "light",
     background: "plain",
     showFooter: true,
-    width: 1080,
-    fontSize: 32,
-    padding: 40,
+    width: 390,
+    fontSize: 16,
+    padding: 20,
   });
   assert.deepEqual(normalizeRenderOptions({ profile: "desktop" }), {
     language: "zh-CN",
@@ -99,9 +99,9 @@ test("the two output profiles enforce their own layout", () => {
     theme: "light",
     background: "plain",
     showFooter: true,
-    width: 1600,
-    fontSize: 28,
-    padding: 48,
+    width: 800,
+    fontSize: 14,
+    padding: 24,
   });
   assert.deepEqual(
     normalizeRenderOptions({
@@ -118,9 +118,9 @@ test("the two output profiles enforce their own layout", () => {
       theme: "dark",
       background: "soft",
       showFooter: true,
-      width: 1080,
-      fontSize: 32,
-      padding: 40,
+      width: 390,
+      fontSize: 16,
+      padding: 20,
     },
   );
   assert.deepEqual(normalizeRenderOptions({ background: "none" }), {
@@ -129,9 +129,9 @@ test("the two output profiles enforce their own layout", () => {
     theme: "light",
     background: "none",
     showFooter: true,
-    width: 1080,
-    fontSize: 32,
-    padding: 40,
+    width: 390,
+    fontSize: 16,
+    padding: 20,
   });
 });
 
@@ -144,7 +144,7 @@ test("document generation and page splitting remain deterministic", () => {
   });
   assert.match(result.html, /charset="utf-8"/);
   assert.match(result.html, /<html lang="zh-CN"/);
-  assert.match(result.html, /--canvas-width: 1080px/);
+  assert.match(result.html, /--canvas-width: 390px/);
   assert.match(result.html, /<h1>中文标题<\/h1>/);
   assert.match(result.html, /<footer class="footer">/);
   assert.match(result.html, /class="footer-wordmark"/);
@@ -170,8 +170,8 @@ test("document generation and page splitting remain deterministic", () => {
     sourceFormat: "markdown",
     profile: "desktop",
   });
-  assert.match(desktop.html, /--canvas-width: 1600px/);
-  assert.match(desktop.html, /--body-font-size: 28px/);
+  assert.match(desktop.html, /--canvas-width: 800px/);
+  assert.match(desktop.html, /--body-font-size: 14px/);
 
   const withoutFooter = buildDocument({
     source: "正文",

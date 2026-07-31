@@ -9,9 +9,9 @@ export const DEFAULT_SETTINGS = Object.freeze({
   theme: "light",
   background: "plain",
   showFooter: true,
-  width: 1080,
-  fontSize: 32,
-  padding: 40,
+  width: 390,
+  fontSize: 16,
+  padding: 20,
   shortcutEnabled: true,
   accelerator: "Command+Option+T",
 });

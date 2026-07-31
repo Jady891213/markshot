@@ -39,15 +39,15 @@ const DIAGRAM_LANGUAGES = Object.freeze({
 export const OUTPUT_PROFILES = Object.freeze({
   mobile: Object.freeze({
     label: "移动端",
-    width: 1080,
-    fontSize: 32,
-    padding: 40,
+    width: 390,
+    fontSize: 16,
+    padding: 20,
   }),
   desktop: Object.freeze({
     label: "PC",
-    width: 1600,
-    fontSize: 28,
-    padding: 48,
+    width: 800,
+    fontSize: 14,
+    padding: 24,
   }),
 });
 
