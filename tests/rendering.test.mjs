@@ -85,6 +85,7 @@ test("sanitizer removes executable HTML and unsafe image URLs", () => {
 test("the two output profiles enforce their own layout", () => {
   assert.deepEqual(normalizeRenderOptions({ profile: "mobile" }), {
     language: "zh-CN",
+    imageScale: 2,
     profile: "mobile",
     theme: "light",
     background: "plain",
@@ -95,6 +96,7 @@ test("the two output profiles enforce their own layout", () => {
   });
   assert.deepEqual(normalizeRenderOptions({ profile: "desktop" }), {
     language: "zh-CN",
+    imageScale: 2,
     profile: "desktop",
     theme: "light",
     background: "plain",
@@ -114,6 +116,7 @@ test("the two output profiles enforce their own layout", () => {
     }),
     {
       language: "zh-CN",
+      imageScale: 2,
       profile: "mobile",
       theme: "dark",
       background: "soft",
@@ -125,6 +128,7 @@ test("the two output profiles enforce their own layout", () => {
   );
   assert.deepEqual(normalizeRenderOptions({ background: "none" }), {
     language: "zh-CN",
+    imageScale: 2,
     profile: "mobile",
     theme: "light",
     background: "none",
@@ -164,6 +168,15 @@ test("document generation and page splitting remain deterministic", () => {
     /[01]\d\/[0-3]\d\/\d{4},? 24:00|[01]\d\/[0-3]\d\/\d{4},? \d{2}:\d{2}|[01]\d\/[0-3]\d\/\d{4},? \d:\d{2}/,
   );
   assert.notEqual(english.revision, result.revision);
+
+  const standardQuality = buildDocument({
+    source: "# 中文标题\n\n正文",
+    sourceFormat: "markdown",
+    profile: "mobile",
+    imageScale: 1,
+  });
+  assert.equal(standardQuality.options.imageScale, 1);
+  assert.notEqual(standardQuality.revision, result.revision);
 
   const desktop = buildDocument({
     source: "PC 正文",
@@ -221,6 +234,16 @@ test("document generation and page splitting remain deterministic", () => {
     ],
   );
   assert.equal(imageLayout(56_001, 1600).tooLong, true);
+  assert.deepEqual(imageLayout(13_001, 1080, [], 2), {
+    pages: [
+      { index: 0, y: 0, width: 1080, height: 6_501 },
+      { index: 1, y: 6_501, width: 1080, height: 6_500 },
+    ],
+    columnCount: 2,
+    tooLong: false,
+    outputWidth: 4_320,
+    outputHeight: 13_002,
+  });
 });
 
 test("diagram fences are extracted without changing ordinary code blocks", () => {

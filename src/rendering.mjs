@@ -290,9 +290,13 @@ function wrapTables(html) {
 export function normalizeRenderOptions(input = {}) {
   const profile = input.profile === "desktop" ? "desktop" : "mobile";
   const preset = OUTPUT_PROFILES[profile];
+  const imageScale = [1, 2].includes(Number(input.imageScale))
+    ? Number(input.imageScale)
+    : 2;
 
   return {
     language: normalizeLanguage(input.language),
+    imageScale,
     profile,
     theme: input.theme === "dark" ? "dark" : "light",
     background:
@@ -443,9 +447,15 @@ function nearestBreakpoint(
   return selected;
 }
 
-export function pageLayout(totalHeight, width, breakpoints = []) {
+export function pageLayout(
+  totalHeight,
+  width,
+  breakpoints = [],
+  maxPageHeight = MAX_PAGE_HEIGHT,
+) {
   const safeHeight = Math.max(1, Math.ceil(totalHeight));
-  const columnCount = Math.ceil(safeHeight / MAX_PAGE_HEIGHT);
+  const safeMaxPageHeight = Math.max(1, Math.floor(maxPageHeight));
+  const columnCount = Math.ceil(safeHeight / safeMaxPageHeight);
   const targetHeight = safeHeight / columnCount;
   const candidates = normalizedBreakpoints(breakpoints, safeHeight);
   const boundaries = [0];
@@ -456,10 +466,10 @@ export function pageLayout(totalHeight, width, breakpoints = []) {
     const ideal = Math.round((safeHeight * index) / columnCount);
     const minimum = Math.max(
       previous + 1,
-      safeHeight - remainingColumns * MAX_PAGE_HEIGHT,
+      safeHeight - remainingColumns * safeMaxPageHeight,
     );
     const maximum = Math.min(
-      previous + MAX_PAGE_HEIGHT,
+      previous + safeMaxPageHeight,
       safeHeight - remainingColumns,
     );
     const heading = nearestBreakpoint(
@@ -501,18 +511,28 @@ export function pageLayout(totalHeight, width, breakpoints = []) {
   return pages;
 }
 
-export function imageLayout(totalHeight, width, breakpoints = []) {
-  const pages = pageLayout(totalHeight, width, breakpoints);
+export function imageLayout(totalHeight, width, breakpoints = [], imageScale = 1) {
+  const safeImageScale = [1, 2].includes(Number(imageScale))
+    ? Number(imageScale)
+    : 1;
+  const pages = pageLayout(
+    totalHeight,
+    width,
+    breakpoints,
+    MAX_PAGE_HEIGHT / safeImageScale,
+  );
   const columnCount = pages.length;
   return {
     pages,
     columnCount,
     tooLong: columnCount > MAX_IMAGE_COLUMNS,
     outputWidth:
-      columnCount <= MAX_IMAGE_COLUMNS ? width * columnCount : width,
+      columnCount <= MAX_IMAGE_COLUMNS
+        ? width * safeImageScale * columnCount
+        : width * safeImageScale,
     outputHeight:
       columnCount <= MAX_IMAGE_COLUMNS
-        ? Math.max(...pages.map(({ height }) => height))
+        ? Math.max(...pages.map(({ height }) => height)) * safeImageScale
         : 0,
   };
 }

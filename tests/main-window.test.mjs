@@ -33,16 +33,18 @@ test("tray single click opens the menu and double click opens the window", () =>
 });
 
 test("long-image capture uses document-coordinate clips and retries transient failures", () => {
-  assert.match(source, /async function capturePageWithDebugger\(debuggerSession, page\)/);
+  assert.match(source, /async function capturePageWithDebugger\(debuggerSession, page, imageScale\)/);
   assert.match(source, /Page\.captureScreenshot/);
   assert.match(source, /captureBeyondViewport: true/);
   assert.match(source, /y: page\.y \/ renderCaptureScaleFactor/);
-  assert.match(source, /attempt === 0 \? 0 : Math\.ceil\(renderCaptureScaleFactor\)/);
+  assert.match(source, /attempt === 0 \? 0 : attempt \/ imageScale/);
   assert.match(source, /\(page\.height \+ capturePadding\)/);
   assert.match(source, /debuggerSession\.detach\(\)/);
-  assert.match(source, /async function capturePageWithRetry\(window, page\)/);
+  assert.match(source, /async function capturePageWithRetry\(window, page, imageScale\)/);
   assert.match(source, /for \(let attempt = 0; attempt < 3; attempt \+= 1\)/);
   assert.match(source, /zoomFactor: 1 \/ renderCaptureScaleFactor/);
+  assert.match(source, /renderDeviceScaleFactor \/ record\.options\.imageScale/);
+  assert.match(source, /const expectedWidth = page\.width \* imageScale/);
   assert.match(
     source,
     /if \(pages\.length > 1\) throw error;[\s\S]*?capturePageWithRetry/,

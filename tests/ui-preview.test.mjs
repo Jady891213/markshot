@@ -92,6 +92,16 @@ test("language controls update the live interface without shrinking labels", () 
   );
 });
 
+test("capture quality offers persisted Standard and HD output scales", () => {
+  assert.match(html, /data-i18n="settings\.captureQuality"/);
+  assert.match(html, /name="image-scale" value="1"/);
+  assert.match(html, /name="image-scale" value="2"/);
+  assert.doesNotMatch(html, /name="image-scale" value="3"/);
+  assert.match(script, /imageScale: Number\(selectedValue\(elements\.imageScale, "2"\)\)/);
+  assert.match(script, /selectValue\(elements\.imageScale, String\(settings\.imageScale\)\)/);
+  assert.match(styles, /\.quality-options\s*\{[^}]*grid-template-columns: repeat\(2,/s);
+});
+
 test("reading items use one Finder menu for more and context-click actions", () => {
   assert.doesNotMatch(script, /documentSubtitle[\s\S]*status\.watching/);
   assert.match(script, /action\.textContent = "•••"/);

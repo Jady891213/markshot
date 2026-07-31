@@ -5,6 +5,7 @@ import { normalizeRenderOptions } from "./rendering.mjs";
 
 export const DEFAULT_SETTINGS = Object.freeze({
   language: DEFAULT_LANGUAGE,
+  imageScale: 2,
   profile: "mobile",
   theme: "light",
   background: "plain",

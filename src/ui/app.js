@@ -39,6 +39,7 @@ const elements = {
   theme: document.querySelectorAll('input[name="theme"]'),
   background: document.querySelectorAll('input[name="background"]'),
   language: document.querySelectorAll('input[name="language"]'),
+  imageScale: document.querySelectorAll('input[name="image-scale"]'),
   titleEnabled: document.getElementById("title-enabled"),
   imageTitle: document.getElementById("image-title"),
   showFooter: document.getElementById("show-footer"),
@@ -390,6 +391,7 @@ function handlePreviewSearchShortcut(event) {
 function currentRenderOptions() {
   return {
     language: currentLanguage(),
+    imageScale: Number(selectedValue(elements.imageScale, "2")),
     profile: selectedValue(elements.profile, "mobile"),
     theme: selectedValue(elements.theme, "light"),
     background: selectedValue(elements.background, "plain"),
@@ -480,6 +482,7 @@ function applySettingsToControls(next) {
   selectValue(elements.theme, settings.theme);
   selectValue(elements.background, settings.background);
   selectValue(elements.language, settings.language);
+  selectValue(elements.imageScale, String(settings.imageScale));
   elements.showFooter.checked = settings.showFooter;
   elements.shortcutEnabled.checked = settings.shortcutEnabled;
   elements.accelerator.value = settings.accelerator;
@@ -1602,6 +1605,12 @@ elements.language.forEach((control) => {
         2800,
       );
     }
+  });
+});
+elements.imageScale.forEach((control) => {
+  control.addEventListener("change", () => {
+    persistSettings();
+    scheduleRender(0);
   });
 });
 elements.titleEnabled.addEventListener("change", () => {

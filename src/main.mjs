@@ -74,6 +74,7 @@ let recentDocumentsPath = "";
 let renderQueue = Promise.resolve();
 let loadedRenderRevision = "";
 let renderCaptureScaleFactor = 1;
+let renderDeviceScaleFactor = 1;
 const renderRecords = new Map();
 const diagramCache = new Map();
 const pendingOpenPaths = [];
@@ -245,10 +246,11 @@ async function renderDiagramBlocks(blocks, options) {
 
 function createRenderWindow(width = 390) {
   if (renderWindow && !renderWindow.isDestroyed()) return renderWindow;
-  renderCaptureScaleFactor = Math.max(
+  renderDeviceScaleFactor = Math.max(
     1,
     Number(screen.getPrimaryDisplay()?.scaleFactor) || 1,
   );
+  renderCaptureScaleFactor = renderDeviceScaleFactor / settings.imageScale;
   renderWindow = new BrowserWindow({
     show: false,
     frame: false,
@@ -299,6 +301,13 @@ async function waitForRenderedContent(window) {
 
 async function loadRenderRecord(record) {
   const window = createRenderWindow(record.options.width);
+  renderDeviceScaleFactor = Math.max(
+    1,
+    Number(screen.getPrimaryDisplay()?.scaleFactor) || 1,
+  );
+  renderCaptureScaleFactor =
+    renderDeviceScaleFactor / record.options.imageScale;
+  window.webContents.setZoomFactor(1 / renderCaptureScaleFactor);
   window.setContentSize(
     Math.ceil(record.options.width / renderCaptureScaleFactor),
     100,
@@ -346,6 +355,7 @@ async function measureRecord(record) {
     measurement.totalHeight,
     record.options.width,
     measurement.candidates,
+    record.options.imageScale,
   );
   record.pages = layout.pages;
   record.layout = {
@@ -409,7 +419,9 @@ function waitForNextPaint(window, timeout = 800) {
   });
 }
 
-async function capturePageWithRetry(window, page) {
+async function capturePageWithRetry(window, page, imageScale) {
+  const expectedWidth = page.width * imageScale;
+  const expectedHeight = page.height * imageScale;
   let actual = "0×0";
   for (let attempt = 0; attempt < 3; attempt += 1) {
     const captureWidth = Math.ceil(page.width / renderCaptureScaleFactor);
@@ -433,33 +445,33 @@ async function capturePageWithRetry(window, page) {
     );
     const size = captured.getSize();
     actual = `${size.width}×${size.height}`;
-    if (size.width === page.width && size.height === page.height) {
+    if (size.width === expectedWidth && size.height === expectedHeight) {
       return captured;
     }
     if (
-      size.width >= page.width &&
-      size.height >= page.height &&
-      size.width - page.width <= Math.ceil(renderCaptureScaleFactor) &&
-      size.height - page.height <= Math.ceil(renderCaptureScaleFactor)
+      size.width >= expectedWidth &&
+      size.height >= expectedHeight &&
+      size.width - expectedWidth <= Math.ceil(renderDeviceScaleFactor) &&
+      size.height - expectedHeight <= Math.ceil(renderDeviceScaleFactor)
     ) {
       return captured.crop({
         x: 0,
         y: 0,
-        width: page.width,
-        height: page.height,
+        width: expectedWidth,
+        height: expectedHeight,
       });
     }
     if (size.width > 0 && size.height > 0) {
       const resized = captured.resize({
-        width: page.width,
-        height: page.height,
+        width: expectedWidth,
+        height: expectedHeight,
         quality: "best",
       });
       const resizedSize = resized.getSize();
       actual = `${resizedSize.width}×${resizedSize.height}`;
       if (
-        resizedSize.width === page.width &&
-        resizedSize.height === page.height
+        resizedSize.width === expectedWidth &&
+        resizedSize.height === expectedHeight
       ) {
         return resized;
       }
@@ -471,18 +483,19 @@ async function capturePageWithRetry(window, page) {
     }
   }
   throw createLocalizedError(settings.language, "error.invalidImageSize", {
-    expected: `${page.width}×${page.height}`,
+    expected: `${expectedWidth}×${expectedHeight}`,
     actual,
   });
 }
 
-async function capturePageWithDebugger(debuggerSession, page) {
+async function capturePageWithDebugger(debuggerSession, page, imageScale) {
+  const expectedWidth = page.width * imageScale;
+  const expectedHeight = page.height * imageScale;
   let actual = "0×0";
   let lastError;
   for (let attempt = 0; attempt < 3; attempt += 1) {
     try {
-      const capturePadding =
-        attempt === 0 ? 0 : Math.ceil(renderCaptureScaleFactor);
+      const capturePadding = attempt === 0 ? 0 : attempt / imageScale;
       const result = await debuggerSession.sendCommand(
         "Page.captureScreenshot",
         {
@@ -507,20 +520,20 @@ async function capturePageWithDebugger(debuggerSession, page) {
       );
       const size = captured.getSize();
       actual = `${size.width}×${size.height}`;
-      if (size.width === page.width && size.height === page.height) {
+      if (size.width === expectedWidth && size.height === expectedHeight) {
         return captured;
       }
       if (
-        size.width >= page.width &&
-        size.height >= page.height &&
-        size.width - page.width <= Math.ceil(renderCaptureScaleFactor) &&
-        size.height - page.height <= Math.ceil(renderCaptureScaleFactor)
+        size.width >= expectedWidth &&
+        size.height >= expectedHeight &&
+        size.width - expectedWidth <= 2 &&
+        size.height - expectedHeight <= 2
       ) {
         return captured.crop({
           x: 0,
           y: 0,
-          width: page.width,
-          height: page.height,
+          width: expectedWidth,
+          height: expectedHeight,
         });
       }
     } catch (error) {
@@ -534,12 +547,12 @@ async function capturePageWithDebugger(debuggerSession, page) {
   }
   if (actual === "0×0" && lastError) throw lastError;
   throw createLocalizedError(settings.language, "error.invalidImageSize", {
-    expected: `${page.width}×${page.height}`,
+    expected: `${expectedWidth}×${expectedHeight}`,
     actual,
   });
 }
 
-async function captureRecordPages(window, pages) {
+async function captureRecordPages(window, pages, imageScale) {
   const debuggerSession = window.webContents.debugger;
   const attachedHere = !debuggerSession.isAttached();
   if (attachedHere) debuggerSession.attach("1.3");
@@ -547,12 +560,14 @@ async function captureRecordPages(window, pages) {
     await debuggerSession.sendCommand("Page.enable");
     const images = [];
     for (const page of pages) {
-      images.push(await capturePageWithDebugger(debuggerSession, page));
+      images.push(
+        await capturePageWithDebugger(debuggerSession, page, imageScale),
+      );
     }
     return images;
   } catch (error) {
     if (pages.length > 1) throw error;
-    return [await capturePageWithRetry(window, pages[0])];
+    return [await capturePageWithRetry(window, pages[0], imageScale)];
   } finally {
     if (attachedHere && debuggerSession.isAttached()) {
       debuggerSession.detach();
@@ -575,7 +590,11 @@ async function captureRecord(record) {
       loadedRenderRevision === record.revision
         ? createRenderWindow(record.options.width)
         : await loadRenderRecord(record);
-    const images = await captureRecordPages(window, record.pages);
+    const images = await captureRecordPages(
+      window,
+      record.pages,
+      record.options.imageScale,
+    );
     record.images = images;
     return images;
   });

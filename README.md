@@ -4,7 +4,7 @@ MarkShot 是一款常驻 macOS 的 Markdown 阅读与分享工具。
 
 MarkShot 把 Markdown 阅读和图片分享放在同一个工作台中：既可以粘贴一段内容即时预览、复制为长图，也可以打开本地 Markdown 文件进行只读阅读。预览是可选择文字的真实文档，只有复制或导出时才会生成图片。
 
-当前开发版本：`v0.5.0`，仅提供 macOS Apple Silicon 构建。
+当前版本：`v0.6.0`，仅提供 macOS Apple Silicon 构建。
 
 ## 界面原型
 
@@ -24,6 +24,7 @@ MarkShot 把 Markdown 阅读和图片分享放在同一个工作台中：既可�
 - 浅色、深色主题与多种图片背景
 - 简体中文与英文界面，可在设置中即时切换并持久保存
 - 图片标题和 MarkShot 页脚
+- 全局截图质量设置：标准 1× 与默认高清 2×；只改变输出像素，不改变预览排版
 - 图片复制与手动导出；超长内容会自动排成顶部对齐的 2–4 列，并合成为一张 PNG
 - Mermaid、Markmap、Graphviz/DOT、Vega-Lite 与 ECharts 文本绘图
 - 长图捕获失败自动重试，超过四列时明确提示并保留原剪贴板
@@ -63,10 +64,10 @@ codesign --verify --deep --strict --verbose=2 "out/MarkShot-darwin-arm64/MarkSho
 
 ## 发布
 
-源码由 `main` 分支维护。编译后的 `.app`、ZIP 和 DMG 不提交到 Git 仓库；当前公开版本仍为 `v0.4.0`，本次 `v0.5.0` 先在开发分支验证：
+源码由 `main` 分支维护。编译后的 `.app`、ZIP 和 DMG 不提交到 Git 仓库。`v0.6.0` 提供以下 Apple Silicon 安装包：
 
-- `MarkShot-v0.4.0-macOS-arm64.zip`：解压后直接获得 MarkShot.app
-- `MarkShot-v0.4.0-macOS-arm64.dmg`：标准 macOS 磁盘映像
+- `MarkShot-v0.6.0-macOS-arm64.dmg`：普通用户推荐，打开后安装 MarkShot.app
+- `MarkShot-v0.6.0-macOS-arm64.zip`：备用下载，解压后直接获得 MarkShot.app
 
 当前构建使用临时签名，尚未进行 Apple Developer ID 签名和公证。其他用户首次运行公开下载版本时，可能遇到 macOS Gatekeeper 提示。
 

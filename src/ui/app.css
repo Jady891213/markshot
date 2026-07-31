@@ -1432,6 +1432,59 @@ svg {
   box-shadow: 0 0 0 3px #edf2ff;
 }
 
+.quality-options {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.quality-option {
+  position: relative;
+  min-width: 0;
+  cursor: pointer;
+}
+
+.quality-option input {
+  position: absolute;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.quality-option > span {
+  display: grid;
+  min-height: 48px;
+  align-content: center;
+  gap: 3px;
+  padding: 7px 10px;
+  color: #4b596d;
+  text-align: center;
+  background: #f8fafc;
+  border: 1px solid #dce3eb;
+  border-radius: 8px;
+}
+
+.quality-option b {
+  font-size: 12px;
+  white-space: nowrap;
+}
+
+.quality-option small {
+  color: var(--muted);
+  font-size: 9px;
+  white-space: nowrap;
+}
+
+.quality-option input:checked + span {
+  color: #3158b1;
+  background: var(--accent-soft);
+  border-color: #83a3f5;
+  box-shadow: 0 0 0 1px #a9bfff inset;
+}
+
+.quality-option input:focus-visible + span {
+  box-shadow: 0 0 0 3px #edf2ff;
+}
+
 .shortcut-setting-row {
   display: flex;
   min-height: 34px;

@@ -23,6 +23,7 @@ test("settings persist presentation defaults without source content", async () =
     const saved = await saveSettings(filePath, {
       profile: "desktop",
       language: "en",
+      imageScale: 1,
       theme: "dark",
       background: "soft",
       showFooter: false,
@@ -41,6 +42,7 @@ test("settings persist presentation defaults without source content", async () =
     assert.equal(saved.padding, 24);
     assert.equal(saved.showFooter, false);
     assert.equal(saved.language, "en");
+    assert.equal(saved.imageScale, 1);
     assert.equal("source" in loaded, false);
     assert.equal("title" in loaded, false);
   } finally {
@@ -52,4 +54,11 @@ test("legacy and invalid language settings fall back to Simplified Chinese", () 
   assert.equal(normalizeSettings({ language: undefined }).language, "zh-CN");
   assert.equal(normalizeSettings({ language: "fr" }).language, "zh-CN");
   assert.equal(normalizeSettings({ language: "en" }).language, "en");
+});
+
+test("capture quality defaults to HD and accepts only standard or HD", () => {
+  assert.equal(normalizeSettings({ imageScale: undefined }).imageScale, 2);
+  assert.equal(normalizeSettings({ imageScale: 1 }).imageScale, 1);
+  assert.equal(normalizeSettings({ imageScale: 2 }).imageScale, 2);
+  assert.equal(normalizeSettings({ imageScale: 3 }).imageScale, 2);
 });
