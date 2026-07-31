@@ -100,7 +100,7 @@ test("the two output profiles enforce their own layout", () => {
     background: "plain",
     showFooter: true,
     width: 1600,
-    fontSize: 32,
+    fontSize: 28,
     padding: 48,
   });
   assert.deepEqual(
@@ -171,7 +171,7 @@ test("document generation and page splitting remain deterministic", () => {
     profile: "desktop",
   });
   assert.match(desktop.html, /--canvas-width: 1600px/);
-  assert.match(desktop.html, /--body-font-size: 32px/);
+  assert.match(desktop.html, /--body-font-size: 28px/);
 
   const withoutFooter = buildDocument({
     source: "正文",
