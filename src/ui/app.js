@@ -76,9 +76,11 @@ let activeDocumentId = "instant";
 let lastReadingDocumentId = "";
 let currentView = "preview";
 let currentPreview;
-let shortcutDraft = "";
-let shortcutPending = false;
-let shortcutApplyTimer;
+const shortcutControls = [
+  { profile: "desktop", enabledKey: "shortcutEnabled", key: "accelerator", enabled: elements.shortcutEnabled, input: elements.accelerator, edit: elements.editShortcut, disable: elements.disableShortcut, error: elements.shortcutError },
+  { profile: "mobile", enabledKey: "mobileShortcutEnabled", key: "mobileAccelerator", enabled: document.getElementById("mobile-shortcut-enabled"), input: document.getElementById("mobile-accelerator"), edit: document.getElementById("edit-mobile-shortcut"), disable: document.getElementById("disable-mobile-shortcut"), error: document.getElementById("mobile-shortcut-error") },
+];
+let updateState;
 let renderTimer;
 let settingsTimer;
 let instantTimer;
@@ -403,26 +405,41 @@ function currentSettings() {
   return {
     ...currentRenderOptions(),
     language: selectedValue(elements.language, currentLanguage()),
-    shortcutEnabled: elements.shortcutEnabled.checked,
-    accelerator: shortcutDraft || settings.accelerator,
+    // Shortcut recording is committed separately, never by a style autosave.
   };
 }
 
 function updateShortcutLabel() {
-  const enabled = elements.shortcutEnabled.checked;
-  const shortcut =
-    shortcutDraft || settings.accelerator || t("settings.shortcutUnset");
-  const formattedShortcut = shortcut.replaceAll("+", " + ");
-  elements.shortcutSummary.textContent = enabled
-    ? formattedShortcut
-    : t("settings.shortcutOff");
-  if (!elements.accelerator.classList.contains("is-recording")) {
-    elements.accelerator.value = enabled
-      ? formattedShortcut
-      : t("settings.shortcutOff");
+  const symbols = { Command: "⌘", CommandOrControl: "⌘", Cmd: "⌘", Control: "⌃", Ctrl: "⌃", Option: "⌥", Alt: "⌥", Shift: "⇧" };
+  for (const control of shortcutControls) {
+    const enabled = settings[control.enabledKey];
+    const value = settings[control.key];
+    const compact = value.split("+").map((key) => symbols[key] || key).join("");
+    if (!control.input.classList.contains("is-recording")) {
+      control.input.value = enabled ? compact : t("settings.shortcutOff");
+    }
+    control.input.title = value.replaceAll("+", " + ");
+    control.input.classList.toggle("is-off", !enabled);
+    control.disable.hidden = !enabled;
+    const hint = document.getElementById(`profile-shortcut-${control.profile}`);
+    hint.textContent = enabled ? compact : t("settings.shortcutInactive");
+    hint.title = `${t(`settings.shortcut.${control.profile}`)} · ${enabled ? control.input.title : t("settings.shortcutInactive")}`;
   }
-  elements.accelerator.classList.toggle("is-off", !enabled);
-  elements.disableShortcut.hidden = !enabled;
+  elements.shortcutSummary.textContent = shortcutControls.map((control) =>
+    `${t(`profile.${control.profile}`)} ${settings[control.enabledKey] ? document.getElementById(`profile-shortcut-${control.profile}`).textContent : t("settings.shortcutOff")}`,
+  ).join(" · ");
+}
+
+function updateUpdateControls() {
+  if (!updateState || !settings) return;
+  const { status, currentVersion, latestVersion, hasUpdate, errorCode } = updateState;
+  const key = status === "checking" ? "checking" : hasUpdate ? "available" : errorCode ? "error" : status === "current" ? "current" : "version";
+  document.getElementById("update-status").textContent = t(`updates.${key}`, { currentVersion, latestVersion });
+  document.getElementById("check-updates").disabled = status === "checking";
+  document.getElementById("download-update").hidden = !hasUpdate && !errorCode;
+  elements.openSettings.classList.toggle("has-update", hasUpdate);
+  elements.openSettings.title = t(hasUpdate ? "updates.availableSettings" : "app.settings");
+  elements.openSettings.setAttribute("aria-label", elements.openSettings.title);
 }
 
 function applyTranslations() {
@@ -467,6 +484,7 @@ function applyTranslations() {
   }
   if (library.opened) renderDocumentLists();
   updatePreviewToolbar();
+  updateUpdateControls();
   updateStatus();
 }
 
@@ -484,9 +502,7 @@ function applySettingsToControls(next) {
   selectValue(elements.language, settings.language);
   selectValue(elements.imageScale, String(settings.imageScale));
   elements.showFooter.checked = settings.showFooter;
-  elements.shortcutEnabled.checked = settings.shortcutEnabled;
-  elements.accelerator.value = settings.accelerator;
-  shortcutDraft = settings.accelerator;
+  for (const control of shortcutControls) control.enabled.checked = settings[control.enabledKey];
   applyTranslations();
   syncReaderPresentation();
   updateShortcutLabel();
@@ -1449,7 +1465,7 @@ async function openDroppedFiles(files) {
 
 function openSettingsDialog() {
   elements.settingsModal.hidden = false;
-  elements.shortcutError.textContent = "";
+  for (const control of shortcutControls) control.error.textContent = "";
   elements.closeSettings.focus();
 }
 
@@ -1475,19 +1491,24 @@ function acceleratorFromEvent(event) {
     ArrowLeft: "Left",
     ArrowRight: "Right",
   };
-  const key = aliases[event.key] || event.key.toUpperCase();
+  // Option+letter on macOS can produce a symbol (e.g. µ); store the physical key.
+  const physicalKey = /^(Key[A-Z]|Digit[0-9])$/.test(event.code || "")
+    ? event.code.replace(/^(Key|Digit)/, "")
+    : "";
+  const key = physicalKey || aliases[event.key] || event.key.toUpperCase();
   if (!key || key.length > 12) return "";
   return [...parts, key].join("+");
 }
 
-async function applyShortcut() {
-  elements.shortcutError.textContent = "";
-  elements.editShortcut.disabled = true;
-  elements.disableShortcut.disabled = true;
+async function applyShortcut(control) {
+  control.error.textContent = "";
+  control.edit.disabled = true;
+  control.disable.disabled = true;
+  control.input.disabled = true;
   try {
-    const result = await api.registerShortcut(shortcutDraft);
+    const result = await api.registerShortcut(control.draft, control.profile);
     if (!result.ok) {
-      elements.shortcutError.textContent = t(
+      control.error.textContent = t(
         "settings.shortcutConflict",
       );
       if (result.settings) applySettingsToControls(result.settings);
@@ -1496,22 +1517,23 @@ async function applyShortcut() {
     applySettingsToControls(result.settings);
     showToast(t("settings.shortcutUpdated"));
   } catch (error) {
-    elements.shortcutError.textContent = t("error.settingsFailed", {
+    control.error.textContent = t("error.settingsFailed", {
       message: error.message,
     });
   } finally {
-    elements.editShortcut.disabled = false;
-    elements.disableShortcut.disabled = false;
+    control.edit.disabled = false;
+    control.disable.disabled = false;
+    control.input.disabled = false;
   }
 }
 
-function scheduleShortcutApply(delay = 160) {
-  clearTimeout(shortcutApplyTimer);
-  shortcutApplyTimer = setTimeout(async () => {
-    if (!shortcutPending) return;
-    shortcutPending = false;
-    await applyShortcut();
-    elements.accelerator.blur();
+function scheduleShortcutApply(control, delay = 160) {
+  clearTimeout(control.timer);
+  control.timer = setTimeout(async () => {
+    if (!control.pending) return;
+    control.pending = false;
+    control.input.blur();
+    await applyShortcut(control);
   }, delay);
 }
 
@@ -1663,67 +1685,70 @@ elements.closeSettings.addEventListener("click", closeSettingsDialog);
 elements.settingsModal.addEventListener("click", (event) => {
   if (event.target === elements.settingsModal) closeSettingsDialog();
 });
-elements.editShortcut.addEventListener("click", () => {
-  elements.accelerator.focus();
-});
-elements.accelerator.addEventListener("focus", () => {
-  clearTimeout(shortcutApplyTimer);
-  shortcutPending = false;
-  elements.accelerator.classList.add("is-recording");
-  elements.accelerator.value = t("settings.shortcutRecord");
-  elements.accelerator.select();
-});
-elements.accelerator.addEventListener("blur", () => {
-  clearTimeout(shortcutApplyTimer);
-  if (shortcutPending) {
-    shortcutPending = false;
-    shortcutDraft = settings.accelerator;
-  }
-  elements.accelerator.classList.remove("is-recording");
-  updateShortcutLabel();
-});
-elements.accelerator.addEventListener("keydown", (event) => {
-  event.preventDefault();
-  event.stopPropagation();
-  const next = acceleratorFromEvent(event);
-  if (!next) {
-    elements.shortcutError.textContent = t("settings.shortcutInvalid");
-    return;
-  }
-  shortcutDraft = next;
-  shortcutPending = true;
-  elements.shortcutEnabled.checked = true;
-  elements.shortcutError.textContent = "";
-  updateShortcutLabel();
-  scheduleShortcutApply(420);
-});
-elements.accelerator.addEventListener("keyup", (event) => {
-  event.preventDefault();
-  event.stopPropagation();
-  if (!shortcutPending) return;
-  scheduleShortcutApply(
-    event.metaKey || event.ctrlKey || event.altKey || event.shiftKey
-      ? 180
-      : 30,
-  );
-});
-elements.disableShortcut.addEventListener("click", async () => {
-  elements.shortcutError.textContent = "";
-  elements.disableShortcut.disabled = true;
-  try {
-    elements.shortcutEnabled.checked = false;
-    const result = await api.updateSettings(currentSettings());
-    applySettingsToControls(result.settings);
-  } catch (error) {
-    elements.shortcutError.textContent = t("error.settingsFailed", {
-      message: error.message,
-    });
-    elements.shortcutEnabled.checked = settings.shortcutEnabled;
+for (const control of shortcutControls) {
+  control.edit.addEventListener("click", () => control.input.focus());
+  control.input.addEventListener("focus", () => {
+    clearTimeout(control.timer);
+    control.pending = false;
+    control.input.classList.add("is-recording");
+    control.input.value = t("settings.shortcutRecord");
+    control.input.select();
+  });
+  control.input.addEventListener("blur", () => {
+    clearTimeout(control.timer);
+    control.pending = false;
+    control.input.classList.remove("is-recording");
     updateShortcutLabel();
-  } finally {
-    elements.disableShortcut.disabled = false;
-  }
+  });
+  control.input.addEventListener("keydown", (event) => {
+    event.preventDefault();
+    event.stopPropagation();
+    if (event.key === "Escape") { control.input.blur(); return; }
+    if (["Meta", "Alt", "Shift", "Control"].includes(event.key)) return;
+    const next = acceleratorFromEvent(event);
+    if (!next) {
+      control.error.textContent = t("settings.shortcutInvalid");
+      return;
+    }
+    control.draft = next;
+    control.pending = true;
+    control.error.textContent = "";
+    control.input.value = next.replaceAll("Command", "⌘").replaceAll("Option", "⌥").replaceAll("Control", "⌃").replaceAll("Shift", "⇧").replaceAll("+", "");
+    scheduleShortcutApply(control, 420);
+  });
+  control.input.addEventListener("keyup", (event) => {
+    event.preventDefault();
+    event.stopPropagation();
+    if (control.pending) scheduleShortcutApply(control,
+      event.metaKey || event.ctrlKey || event.altKey || event.shiftKey ? 180 : 30);
+  });
+  control.disable.addEventListener("click", async () => {
+    control.error.textContent = "";
+    control.disable.disabled = true;
+    try {
+      const result = await api.updateSettings({ [control.enabledKey]: false });
+      applySettingsToControls(result.settings);
+    } catch (error) {
+      control.error.textContent = t("error.settingsFailed", { message: error.message });
+    } finally {
+      control.disable.disabled = false;
+    }
+  });
+}
+
+async function openProjectLink(action) {
+  try { await action(); }
+  catch { showToast(t("updates.openFailed"), "error"); }
+}
+document.getElementById("open-github").addEventListener("click", () => openProjectLink(api.openGitHub));
+document.getElementById("download-update").addEventListener("click", () => openProjectLink(api.openRelease));
+document.getElementById("check-updates").addEventListener("click", async () => {
+  try {
+    updateState = await api.checkUpdates();
+    updateUpdateControls();
+  } catch { showToast(t("updates.error"), "error"); }
 });
+api.onUpdateChanged((next) => { updateState = next; updateUpdateControls(); });
 
 elements.contentScroll.addEventListener("scroll", () => {
   if (activeScrollContainer() !== elements.contentScroll) return;
@@ -1839,9 +1864,10 @@ api.onDocumentChanged((payload) => {
 });
 
 async function initialize() {
-  [settings, library] = await Promise.all([
+  [settings, library, updateState] = await Promise.all([
     api.getSettings(),
     api.getDocumentLibrary(),
+    api.getUpdateState(),
   ]);
   applySettingsToControls(settings);
   applyLibrary(library);

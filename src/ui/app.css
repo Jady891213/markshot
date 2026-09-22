@@ -1190,6 +1190,35 @@ svg {
   font-size: 9px;
 }
 
+/* Keep the original card footprint; shortcuts are supporting information. */
+.profile-card > span {
+  height: 50px;
+  padding: 3px 5px;
+}
+.profile-card small { margin-top: 0; line-height: 12px; }
+.profile-card kbd {
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--muted);
+  font: 10px/12px -apple-system, BlinkMacSystemFont, sans-serif;
+}
+#open-settings { position: relative; }
+#open-settings.has-update::after {
+  content: "";
+  position: absolute;
+  top: 4px;
+  right: 4px;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: #e44545;
+  box-shadow: 0 0 0 2px #fff;
+}
+.update-actions { display: flex; gap: 8px; }
+.update-note { margin: 9px 0 0; font-size: 11px; color: var(--muted); }
+
 .switch-row {
   justify-content: space-between;
   gap: 12px;

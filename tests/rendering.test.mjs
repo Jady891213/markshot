@@ -268,7 +268,7 @@ console.log("keep me");
       { type: "graphviz", language: "dot" },
     ],
   );
-  assert.match(prepared.source, /language-markshot-diagram|markshot-diagram/);
+  assert.equal(prepared.diagrams[0].token, "MARKSHOT_DIAGRAM_0000");
   assert.match(prepared.source, /console\.log/);
 
   const html = buildDocument({
@@ -282,4 +282,36 @@ console.log("keep me");
   }).html;
   assert.match(html, /diagram-block">one/);
   assert.match(html, /diagram-block">two/);
+});
+
+test("diagram parsing handles nested fences and preserves fenced examples", () => {
+  const source = [
+    "> ```mermaid", "> graph TD; A-->B", "> ```", "",
+    "- Chart:", "", "  ~~~G2", "  { type: 'interval' }", "  ~~~~", "",
+    "```antv-g2", "{ type: 'line' }", "```", "",
+    "````markdown", "```mermaid", "graph TD; Example-->Only", "```", "````",
+  ].join("\n");
+  const { diagrams } = extractDiagramBlocks(source);
+  assert.deepEqual(diagrams.map(block => block.type), ["mermaid", "g2", "g2"]);
+  assert.equal(diagrams[0].source, "graph TD; A-->B");
+  const html = renderSource(source, "markdown", diagrams.map((_, i) => `<figure>chart-${i}</figure>`));
+  for (let i = 0; i < 3; i++) assert.equal(html.split(`chart-${i}`).length, 2);
+  assert.match(html, /Example/);
+  assert.doesNotMatch(html, /MARKSHOT_DIAGRAM_/);
+  assert.match(renderSource("```js\nconst value = 1;\n```"), /hljs-keyword/);
+});
+
+test("Markdown preserves explicit table alignment and open disclosure state", () => {
+  const html = renderSource('| L | C | R |\n| :-- | :-: | --: |\n| 1 | 2 | 3 |\n\n<details open><summary>More</summary>Text</details>');
+  assert.match(html, /align="center"/);
+  assert.match(html, /align="right"/);
+  assert.match(html, /<details open>/);
+});
+
+test("repeated diagram extraction resets footnote parser state", () => {
+  const source = 'Note[^1]\n\n[^1]: Text\n\n```g2\n{type:"interval"}\n```';
+  for (let i = 0; i < 4; i++) {
+    assert.equal(extractDiagramBlocks(source).diagrams.length, 1);
+    assert.match(renderSource(source), /footnotes/);
+  }
 });

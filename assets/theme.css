@@ -271,23 +271,18 @@ pre code {
   overflow: hidden;
   break-inside: avoid;
   color: var(--text);
-  background: var(--code-bg);
+  background: var(--card-bg);
   border: 1px solid var(--border);
-  border-radius: 18px;
+  border-radius: 6px;
 }
 
 .diagram-surface {
   display: grid;
   place-items: center;
-  min-height: 240px;
-  padding: 28px;
+  min-height: 0;
+  padding: 18px;
   overflow: hidden;
   background: var(--card-bg);
-}
-
-.diagram-graphviz .diagram-surface,
-.diagram-vega-lite .diagram-surface {
-  background: rgba(255, 255, 255, 0.96);
 }
 
 .diagram-surface svg {
@@ -361,10 +356,13 @@ th {
   font-weight: 700;
 }
 
+th[align="center"], td[align="center"] { text-align: center; }
+th[align="right"], td[align="right"] { text-align: right; }
+
 input[type="checkbox"] {
-  width: 22px;
-  height: 22px;
-  margin: 0 10px 0 0;
+  width: 1em;
+  height: 1em;
+  margin: 0 0.4em 0 0;
   accent-color: var(--accent);
   vertical-align: -3px;
 }

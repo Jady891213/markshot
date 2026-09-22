@@ -156,14 +156,18 @@ test("settings use a compact Quick Capture row without subtitle or apply help", 
   );
   assert.match(
     script,
-    /elements\.accelerator\.addEventListener\("keyup"[\s\S]*?scheduleShortcutApply/,
+    /control\.input\.addEventListener\("keyup"[\s\S]*?scheduleShortcutApply/,
   );
-  assert.match(script, /updateShortcutLabel\(\);\s*scheduleShortcutApply\(420\)/);
-  assert.match(script, /async function applyShortcut\(\)/);
+  assert.match(script, /scheduleShortcutApply\(control, 420\)/);
+  assert.match(script, /async function applyShortcut\(control\)/);
   assert.match(
     script,
-    /elements\.shortcutEnabled\.checked = false;[\s\S]*?api\.updateSettings\(currentSettings\(\)\)/,
+    /api\.updateSettings\(\{ \[control\.enabledKey\]: false \}\)/,
   );
+  assert.match(html, /id="profile-shortcut-mobile"/);
+  assert.match(html, /id="profile-shortcut-desktop"/);
+  assert.match(html, /id="mobile-accelerator"/);
+  assert.match(styles, /\.profile-card > span\s*\{\s*height: 50px;/);
 });
 
 test("Command+F searches the current preview without changing exported HTML", () => {

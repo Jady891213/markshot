@@ -1,7 +1,7 @@
 {
   "name": "markshot-app",
   "productName": "MarkShot",
-  "version": "0.6.0",
+  "version": "0.7.0",
   "private": true,
   "type": "module",
   "main": "src/main.mjs",
@@ -13,15 +13,18 @@
     "check": "node --check src/main.mjs && node --check src/diagram-preload.cjs && node --check src/diagrams.mjs && node --check src/documents.mjs && node --check src/i18n.mjs && node --check src/png.mjs && node --check src/rendering.mjs && node --check src/settings.mjs && node --check src/ui/app.js"
   },
   "dependencies": {
+    "@antv/g-svg": "2.1.1",
+    "@antv/g2": "5.4.8",
     "@viz-js/viz": "3.28.0",
     "echarts": "6.1.0",
     "highlight.js": "11.11.1",
     "json5": "2.2.3",
-    "markmap-lib": "0.18.12",
-    "markmap-view": "0.18.12",
     "marked": "16.4.2",
     "marked-footnote": "1.4.0",
     "marked-highlight": "2.2.4",
+    "markmap-common": "0.18.9",
+    "markmap-lib": "0.18.12",
+    "markmap-view": "0.18.12",
     "mermaid": "11.16.0",
     "sanitize-html": "2.17.5",
     "vega": "6.3.1",
@@ -58,6 +61,7 @@
         "platform": "darwin",
         "arch": "arm64",
         "ignore": [
+          "^/TMP to delete",
           "^/tests($|/)",
           "^/macos($|/)",
           "^/scripts($|/)",

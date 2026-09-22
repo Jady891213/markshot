@@ -34,6 +34,8 @@ const DIAGRAM_LANGUAGES = Object.freeze({
   "vega-lite": "vega-lite",
   vegalite: "vega-lite",
   echarts: "echarts",
+  g2: "g2",
+  "antv-g2": "g2",
 });
 
 export const OUTPUT_PROFILES = Object.freeze({
@@ -51,7 +53,7 @@ export const OUTPUT_PROFILES = Object.freeze({
   }),
 });
 
-const markdown = new Marked(
+function createMarkdown() { return new Marked(
   markedHighlight({
     emptyLangClass: "hljs",
     langPrefix: "hljs language-",
@@ -64,6 +66,7 @@ const markdown = new Marked(
   }),
   markedFootnote(),
 );
+}
 
 function stripBom(value) {
   return value.replace(/^\uFEFF/, "");
@@ -200,6 +203,7 @@ export function sanitizeContent(html) {
       div: ["class"],
       ul: ["class"],
       ol: ["class"],
+      details: ["open"],
     },
     allowedClasses: {
       code: ["hljs", /^language-[a-z0-9_+-]+$/i],
@@ -227,24 +231,25 @@ export function extractDiagramBlocks(source, sourceFormat = "auto") {
   if (format === "html") return { source: original, diagrams: [] };
 
   const diagrams = [];
-  const prepared = original.replace(
-    /^ {0,3}(`{3,}|~{3,})[ \t]*([a-z0-9_-]+)[^\n]*\n([\s\S]*?)^ {0,3}\1[ \t]*$/gim,
-    (block, _fence, language, body) => {
-      const type = DIAGRAM_LANGUAGES[String(language).toLowerCase()];
-      if (!type) return block;
+  // Footnote extensions retain lexer state; never share a parser across documents.
+  const markdown = createMarkdown();
+  const tokens = markdown.lexer(original);
+  markdown.walkTokens(tokens, (token) => {
+      if (token.type !== "code" || token.codeBlockStyle === "indented") return;
+      const language = String(token.lang || "").trim().split(/\s+/)[0].toLowerCase();
+      const type = DIAGRAM_LANGUAGES[language];
+      if (!type) return;
       const index = diagrams.length;
-      const token = `MARKSHOT_DIAGRAM_${String(index).padStart(4, "0")}`;
+      const placeholder = `MARKSHOT_DIAGRAM_${String(index).padStart(4, "0")}`;
       diagrams.push({
         index,
         type,
         language: String(language).toLowerCase(),
-        source: String(body).replace(/\n$/, ""),
-        token,
+        source: token.text,
+        token: placeholder,
       });
-      return `\`\`\`markshot-diagram\n${token}\n\`\`\``;
-    },
-  );
-  return { source: prepared, diagrams };
+  });
+  return { source: original, diagrams };
 }
 
 function replaceDiagramPlaceholders(html, diagramHtml = []) {
@@ -266,8 +271,18 @@ export function renderSource(
   const format = detectSourceFormat(source, sourceFormat);
   if (format === "html") return sanitizeContent(source);
   const input = format === "plain" ? normalizePlainText(source) : source;
+  const parser = createMarkdown();
+  let diagramIndex = 0;
+  if (diagramHtml.length) parser.use({ renderer: {
+    code(token) {
+      const language = String(token.lang || "").trim().split(/\s+/)[0].toLowerCase();
+      if (!DIAGRAM_LANGUAGES[language] || token.codeBlockStyle === "indented") return false;
+      const placeholder = `MARKSHOT_DIAGRAM_${String(diagramIndex++).padStart(4, "0")}`;
+      return `<pre><code class="hljs language-markshot-diagram">${placeholder}</code></pre>`;
+    },
+  }});
   const sanitized = sanitizeContent(
-    markdown.parse(String(input), { gfm: true, breaks: false }),
+    parser.parse(String(input), { gfm: true, breaks: false }),
   );
   return replaceDiagramPlaceholders(sanitized, diagramHtml);
 }

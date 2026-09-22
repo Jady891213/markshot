@@ -4,7 +4,7 @@ MarkShot 是一款常驻 macOS 的 Markdown 阅读与分享工具。
 
 MarkShot 把 Markdown 阅读和图片分享放在同一个工作台中：既可以粘贴一段内容即时预览、复制为长图，也可以打开本地 Markdown 文件进行只读阅读。预览是可选择文字的真实文档，只有复制或导出时才会生成图片。
 
-当前版本：`v0.6.0`，仅提供 macOS Apple Silicon 构建。
+当前版本：`v0.7.0`，仅提供 macOS Apple Silicon 构建。
 
 ## 界面原型
 
@@ -26,9 +26,10 @@ MarkShot 把 Markdown 阅读和图片分享放在同一个工作台中：既可�
 - 图片标题和 MarkShot 页脚
 - 全局截图质量设置：标准 1× 与默认高清 2×；只改变输出像素，不改变预览排版
 - 图片复制与手动导出；超长内容会自动排成顶部对齐的 2–4 列，并合成为一张 PNG
-- Mermaid、Markmap、Graphviz/DOT、Vega-Lite 与 ECharts 文本绘图
+- Mermaid、Markmap、Graphviz/DOT、Vega-Lite、ECharts 与 AntV G2 文本绘图
 - 长图捕获失败自动重试，超过四列时明确提示并保留原剪贴板
-- “快速截图”快捷键快速读取剪贴板并生成图片
+- 双快速截图快捷键读取剪贴板：`Command+Option+T` 固定 PC，`Command+Option+M` 固定移动端；设置中可分别修改或关闭，风格卡片同步显示实际快捷键
+- 标题栏 GitHub 入口与设置中的版本检查：启动及每六小时自动检查正式 Release，新版用齿轮红点提示，点击进入 GitHub 下载页手动更新
 - Dock 与菜单栏常驻
 - UTF-8、UTF-16LE 和 UTF-16BE 文本识别
 
@@ -64,10 +65,10 @@ codesign --verify --deep --strict --verbose=2 "out/MarkShot-darwin-arm64/MarkSho
 
 ## 发布
 
-源码由 `main` 分支维护。编译后的 `.app`、ZIP 和 DMG 不提交到 Git 仓库。`v0.6.0` 提供以下 Apple Silicon 安装包：
+源码由 `main` 分支维护。编译后的 `.app`、ZIP 和 DMG 不提交到 Git 仓库。`v0.7.0` 提供以下 Apple Silicon 安装包：
 
-- `MarkShot-v0.6.0-macOS-arm64.dmg`：普通用户推荐，打开后安装 MarkShot.app
-- `MarkShot-v0.6.0-macOS-arm64.zip`：备用下载，解压后直接获得 MarkShot.app
+- `MarkShot-v0.7.0-macOS-arm64.dmg`：普通用户推荐，打开后安装 MarkShot.app
+- `MarkShot-v0.7.0-macOS-arm64.zip`：备用下载，解压后直接获得 MarkShot.app
 
 当前构建使用临时签名，尚未进行 Apple Developer ID 签名和公证。其他用户首次运行公开下载版本时，可能遇到 macOS Gatekeeper 提示。
 
@@ -100,7 +101,21 @@ option = { xAxis: { data: ["A"] }, yAxis: {}, series: [{ type: "bar", data: [3] 
 ```
 ````
 
-Vega-Lite 和 ECharts 支持安全 JSON5 配置，但不执行任意 JavaScript；远程数据、图片和脚本会被拒绝。单个图表可以通过顶层 `$markshot: { width, height }` 调整绘图尺寸，最终列宽仍由移动端或 PC 输出规格决定。
+Vega-Lite、ECharts 和 G2 支持安全 JSON5 配置，但不执行任意 JavaScript；远程数据、图片和脚本会被拒绝。单个图表可以通过顶层 `$markshot: { width, height }` 调整绘图尺寸，最终列宽仍由移动端或 PC 输出规格决定。
+
+G2 使用 v5 声明式配置，围栏语言为 `g2` 或 `antv-g2`，数据必须内联。兼容直接配置及 `{ "type": "g2", "config": { ... } }` 包装格式。例如：
+
+```g2
+{
+  type: 'interval',
+  data: [{ name: '周一', value: 12 }, { name: '周二', value: 20 }],
+  encode: { x: 'name', y: 'value' },
+}
+```
+
+不支持直接粘贴 `new Chart()` 等 JavaScript 程序。图表输出为静态 SVG，不保留动画和悬浮交互。引用和列表中的绘图围栏也可识别；更外层代码围栏里的示例保持原文。
+
+完整测试文档见 [MarkShot 渲染验收](docs/MarkShot-渲染验收.md)。目前不支持 LaTeX 数学公式和 GitHub 风格提示块（`[!NOTE]` 等）的专用渲染，它们会按原始文本显示。
 
 ## 数据与隐私
 

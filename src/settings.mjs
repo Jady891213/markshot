@@ -15,6 +15,8 @@ export const DEFAULT_SETTINGS = Object.freeze({
   padding: 16,
   shortcutEnabled: true,
   accelerator: "Command+Option+T",
+  mobileShortcutEnabled: true,
+  mobileAccelerator: "Command+Option+M",
 });
 
 export function normalizeSettings(input = {}) {
@@ -37,6 +39,16 @@ export function normalizeSettings(input = {}) {
         ? input.shortcutEnabled
         : DEFAULT_SETTINGS.shortcutEnabled,
     accelerator,
+    mobileShortcutEnabled:
+      typeof input.mobileShortcutEnabled === "boolean"
+        ? input.mobileShortcutEnabled
+        : input.shortcutEnabled !== false,
+    mobileAccelerator:
+      typeof input.mobileAccelerator === "string" &&
+      input.mobileAccelerator.trim().length >= 3 &&
+      input.mobileAccelerator.trim().length <= 80
+        ? input.mobileAccelerator.trim()
+        : DEFAULT_SETTINGS.mobileAccelerator,
   };
 }
 

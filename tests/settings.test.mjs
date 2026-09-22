@@ -62,3 +62,15 @@ test("capture quality defaults to HD and accepts only standard or HD", () => {
   assert.equal(normalizeSettings({ imageScale: 2 }).imageScale, 2);
   assert.equal(normalizeSettings({ imageScale: 3 }).imageScale, 2);
 });
+
+test("legacy shortcut migrates to PC; mobile has an independent binding and respects legacy off", () => {
+  const legacy = normalizeSettings({ accelerator: "Command+Shift+Y", shortcutEnabled: false });
+  assert.equal(legacy.accelerator, "Command+Shift+Y");
+  assert.equal(legacy.shortcutEnabled, false);
+  assert.equal(legacy.mobileShortcutEnabled, false);
+  assert.equal(legacy.mobileAccelerator, "Command+Option+M");
+  const custom = normalizeSettings({ mobileAccelerator: "Command+Shift+M", mobileShortcutEnabled: true, shortcutEnabled: false });
+  assert.equal(custom.mobileAccelerator, "Command+Shift+M");
+  assert.equal(custom.mobileShortcutEnabled, true);
+  assert.equal(normalizeSettings({mobileAccelerator: ""}).mobileAccelerator, "Command+Option+M");
+});

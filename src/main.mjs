@@ -12,6 +12,7 @@ import {
   Menu,
   nativeImage,
   screen,
+  session,
   shell,
   Tray,
 } from "electron";
@@ -50,6 +51,8 @@ import {
   saveSettings,
 } from "./settings.mjs";
 import { composePngColumns, optimizePngLossless } from "./png.mjs";
+import { createShortcutRegistry, SHORTCUT_PROFILES } from "./shortcuts.mjs";
+import { createUpdateChecker, GITHUB_URL, RELEASES_URL } from "./updates.mjs";
 
 const SOURCE_DIR = path.dirname(fileURLToPath(import.meta.url));
 const UI_DIR = path.join(SOURCE_DIR, "ui");
@@ -66,12 +69,16 @@ let hudWindow;
 let hudTimer;
 let isQuitting = false;
 let quickGenerationRunning = false;
-let registeredAccelerator = "";
+const shortcutRegistry = createShortcutRegistry(globalShortcut, quickGenerate);
+let settingsQueue = Promise.resolve();
+let updateChecker;
+let updateCheckTimer;
 let settings = { ...DEFAULT_SETTINGS };
 let settingsPath = "";
 let documentLibrary;
 let recentDocumentsPath = "";
 let renderQueue = Promise.resolve();
+let diagramQueue = Promise.resolve();
 let loadedRenderRevision = "";
 let renderCaptureScaleFactor = 1;
 let renderDeviceScaleFactor = 1;
@@ -379,7 +386,10 @@ function rememberRecord(record) {
 async function renderPreview(request) {
   const options = normalizeRenderOptions(request);
   const prepared = extractDiagramBlocks(request.source, request.sourceFormat);
-  const diagramHtml = await renderDiagramBlocks(prepared.diagrams, options);
+  // Profile/theme changes may overlap; all diagrams share one DOM host.
+  const pendingDiagrams = diagramQueue.then(() => renderDiagramBlocks(prepared.diagrams, options));
+  diagramQueue = pendingDiagrams.catch(() => {});
+  const diagramHtml = await pendingDiagrams;
   const built = buildDocument({
     ...request,
     preparedSource: prepared.source,
@@ -939,7 +949,7 @@ function showHud(message, tone = "success", duration = 1500) {
   }, duration);
 }
 
-async function quickGenerate() {
+async function quickGenerate(profile = "desktop") {
   if (quickGenerationRunning) {
     showHud(t("hud.busy"), "info");
     return { status: "busy", pageCount: 0 };
@@ -972,6 +982,7 @@ async function quickGenerate() {
       sourceFormat: payload.format,
       title: "",
       ...settings,
+      profile: profile === "mobile" ? "mobile" : "desktop",
     });
     if (record.layout.tooLong) {
       showMainWindow();
@@ -1021,35 +1032,15 @@ async function quickGenerate() {
 
 function rebuildTrayMenu() {
   if (!tray) return;
-  const shortcutLabel = settings.shortcutEnabled
-    ? `${t("menu.quickGenerate")}（${settings.accelerator.replaceAll("+", " + ")}）`
-    : t("menu.quickGenerate");
   trayMenu = Menu.buildFromTemplate([
     {
       label: t("menu.openManager"),
       click: showMainWindow,
     },
-    {
-      label: shortcutLabel,
-      click: quickGenerate,
-    },
-    { type: "separator" },
-    {
-      label: t("menu.enableShortcut"),
-      type: "checkbox",
-      checked: settings.shortcutEnabled,
-      click: async (menuItem) => {
-        const result = await applyShortcutSettings({
-          ...settings,
-          shortcutEnabled: menuItem.checked,
-        });
-        if (!result.ok) {
-          menuItem.checked = settings.shortcutEnabled;
-          showHud(t("hud.shortcutConflict"), "error", 2600);
-        }
-        mainWindow?.webContents.send("settings:changed", settings);
-      },
-    },
+    ...SHORTCUT_PROFILES.map(({ profile, enabled, accelerator }) => ({
+      label: `${t(`settings.shortcut.${profile}`)}${settings[enabled] ? `（${settings[accelerator].replaceAll("+", " + ")}）` : ""}`,
+      click: () => quickGenerate(profile),
+    })),
     { type: "separator" },
     {
       label: t("menu.quit"),
@@ -1074,53 +1065,29 @@ function scheduleTrayMenuPopup() {
   }, 300);
 }
 
-async function registerAccelerator(accelerator) {
-  if (registeredAccelerator === accelerator) {
-    return { ok: globalShortcut.isRegistered(accelerator) };
-  }
-
-  let registered = false;
-  try {
-    registered = globalShortcut.register(accelerator, quickGenerate);
-  } catch {
-    registered = false;
-  }
-  if (!registered) return { ok: false, conflict: true };
-
-  if (registeredAccelerator) {
-    globalShortcut.unregister(registeredAccelerator);
-  }
-  registeredAccelerator = accelerator;
-  return { ok: true };
-}
-
-async function applyShortcutSettings(nextInput) {
-  const next = normalizeSettings(nextInput);
-  const shortcutChanged =
-    next.shortcutEnabled !== settings.shortcutEnabled ||
-    next.accelerator !== settings.accelerator;
-  if (shortcutChanged && next.shortcutEnabled) {
-    const result = await registerAccelerator(next.accelerator);
+function applyShortcutSettings(patch) {
+  const task = async () => {
+    const next = normalizeSettings({ ...settings, ...patch });
+    const result = shortcutRegistry.apply(next);
     if (!result.ok) {
-      settings = await saveSettings(settingsPath, {
-        ...next,
-        shortcutEnabled: settings.shortcutEnabled,
-        accelerator: settings.accelerator,
-      });
-      rebuildNativeMenus();
-      return {
-        ...result,
-        settings,
-      };
+      for (const item of SHORTCUT_PROFILES) {
+        next[item.enabled] = settings[item.enabled];
+        next[item.accelerator] = settings[item.accelerator];
+      }
     }
-  } else if (shortcutChanged && registeredAccelerator) {
-    globalShortcut.unregister(registeredAccelerator);
-    registeredAccelerator = "";
-  }
-
-  settings = await saveSettings(settingsPath, next);
-  rebuildNativeMenus();
-  return { ok: true, settings };
+    try {
+      settings = await saveSettings(settingsPath, next);
+    } catch (error) {
+      shortcutRegistry.apply(settings);
+      throw error;
+    }
+    rebuildNativeMenus();
+    sendToMainWindow("settings:changed", settings);
+    return { ...result, settings };
+  };
+  const pending = settingsQueue.then(task, task);
+  settingsQueue = pending.catch(() => {});
+  return pending;
 }
 
 function createTray() {
@@ -1148,10 +1115,10 @@ function createDockMenu() {
         label: t("menu.openManager"),
         click: showMainWindow,
       },
-      {
-        label: t("menu.quickGenerateClipboard"),
-        click: quickGenerate,
-      },
+      ...SHORTCUT_PROFILES.map(({ profile }) => ({
+        label: t(`settings.shortcut.${profile}`),
+        click: () => quickGenerate(profile),
+      })),
       { type: "separator" },
       {
         label: t("menu.quitMarkShot"),
@@ -1308,16 +1275,20 @@ function registerIpc() {
     },
   );
 
-  ipcMain.handle("quick:generate", () => quickGenerate());
+  ipcMain.handle("quick:generate", (_event, profile) => quickGenerate(profile));
+  ipcMain.handle("updates:get", () => updateChecker.getState());
+  ipcMain.handle("updates:check", () => updateChecker.check());
+  ipcMain.handle("links:github", () => shell.openExternal(GITHUB_URL));
+  ipcMain.handle("links:release", () => shell.openExternal(updateChecker.getState().releaseUrl || RELEASES_URL));
   ipcMain.handle("settings:get", () => settings);
   ipcMain.handle("settings:update", (_event, next) =>
-    applyShortcutSettings({ ...settings, ...next }),
+    applyShortcutSettings(next),
   );
-  ipcMain.handle("shortcut:register", (_event, accelerator) =>
+  ipcMain.handle("shortcut:register", (_event, accelerator, profile) =>
     applyShortcutSettings({
-      ...settings,
-      shortcutEnabled: true,
-      accelerator,
+      ...(profile === "mobile"
+        ? { mobileShortcutEnabled: true, mobileAccelerator: accelerator }
+        : { shortcutEnabled: true, accelerator }),
     }),
   );
   ipcMain.handle("documents:get", () => documentLibrarySnapshot());
@@ -1421,6 +1392,7 @@ if (gotSingleInstanceLock) {
     globalShortcut.unregisterAll();
     documentLibrary?.dispose();
     clearTimeout(hudTimer);
+    clearTimeout(updateCheckTimer);
     cancelTrayMenuPopup();
     renderWindow?.destroy();
     diagramWindow?.destroy();
@@ -1434,6 +1406,12 @@ if (gotSingleInstanceLock) {
       "recent-documents.json",
     );
     settings = await loadSettings(settingsPath);
+    updateChecker = createUpdateChecker({
+      currentVersion: app.getVersion(),
+      // Isolate release requests from the diagram renderer's offline-only session.
+      fetchImpl: (url, options) => session.fromPartition("markshot-updates").fetch(url, options),
+      onChange: (state) => sendToMainWindow("updates:changed", state),
+    });
     documentLibrary = new DocumentLibrary({
       recentPath: recentDocumentsPath,
       getLanguage: () => settings.language,
@@ -1458,14 +1436,25 @@ if (gotSingleInstanceLock) {
     createDockMenu();
     createApplicationMenu();
     createMainWindow();
-    if (settings.shortcutEnabled) {
-      const result = await registerAccelerator(settings.accelerator);
-      if (!result.ok) {
-        settings.shortcutEnabled = false;
-        settings = await saveSettings(settingsPath, settings);
-        rebuildNativeMenus();
-        showHud(t("hud.defaultShortcutConflict"), "error", 3000);
+    const startupSettings = { ...settings, shortcutEnabled: false, mobileShortcutEnabled: false };
+    let shortcutConflict = false;
+    for (const item of SHORTCUT_PROFILES) {
+      if (!settings[item.enabled]) continue;
+      startupSettings[item.enabled] = true;
+      if (!shortcutRegistry.apply(startupSettings).ok) {
+        startupSettings[item.enabled] = false;
+        shortcutConflict = true;
       }
     }
+    if (shortcutConflict) {
+      settings = await saveSettings(settingsPath, startupSettings);
+      rebuildNativeMenus();
+      showHud(t("hud.defaultShortcutConflict"), "error", 3000);
+    }
+    const checkUpdates = async () => {
+      await updateChecker.check();
+      if (!isQuitting) updateCheckTimer = setTimeout(checkUpdates, 6 * 60 * 60 * 1000);
+    };
+    updateCheckTimer = setTimeout(checkUpdates, 5000);
   });
 }

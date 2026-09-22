@@ -11,12 +11,17 @@ contextBridge.exposeInMainWorld("replyImage", {
   renderPreview: (request) => ipcRenderer.invoke("preview:render", request),
   copyPage: (request) => ipcRenderer.invoke("page:copy", request),
   exportPage: (request) => ipcRenderer.invoke("page:export", request),
-  quickGenerate: () => ipcRenderer.invoke("quick:generate"),
+  quickGenerate: (profile) => ipcRenderer.invoke("quick:generate", profile),
+  getUpdateState: () => ipcRenderer.invoke("updates:get"),
+  checkUpdates: () => ipcRenderer.invoke("updates:check"),
+  openGitHub: () => ipcRenderer.invoke("links:github"),
+  openRelease: () => ipcRenderer.invoke("links:release"),
+  onUpdateChanged: (callback) => subscribe("updates:changed", callback),
   getSettings: () => ipcRenderer.invoke("settings:get"),
   updateSettings: (settings) =>
     ipcRenderer.invoke("settings:update", settings),
-  registerShortcut: (accelerator) =>
-    ipcRenderer.invoke("shortcut:register", accelerator),
+  registerShortcut: (accelerator, profile) =>
+    ipcRenderer.invoke("shortcut:register", accelerator, profile),
   getDocumentLibrary: () => ipcRenderer.invoke("documents:get"),
   openMarkdownFiles: () => ipcRenderer.invoke("documents:open"),
   openRecentFile: (filePath) =>
